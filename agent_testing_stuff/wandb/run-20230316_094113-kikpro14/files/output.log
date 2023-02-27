@@ -1,0 +1,86 @@
+Max Steps:   0%|          | 0/1000000 [00:00<?, ?steps/s]/tmp/ipykernel_59759/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|          | 505/1000000 [00:01<47:44, 348.87steps/s]
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+req True
+False None
+actor loss: -1.8828935623168945 - critic loss 0.47004878520965576
+req True
+False None
+actor loss: -2.67556095123291 - critic loss 0.9018619656562805
+req True
+False None
+actor loss: -1.334475040435791 - critic loss 0.23355363309383392
+req True
+
+Max Steps:   0%|          | 1168/1000000 [00:03<45:16, 367.73steps/s]
+actor loss: -3.0928685665130615 - critic loss 1.1069985628128052
+req True
+False None
+actor loss: -3.4690871238708496 - critic loss 1.275604486465454
+req True
+False None
+actor loss: -1.7197498083114624 - critic loss 0.3224739134311676
+req True
+False None
+actor loss: -1.722832441329956 - critic loss 0.3224014341831207
+req True
+False None
+actor loss: -1.545811653137207 - critic loss 0.3343949317932129
+req True
+
+Max Steps:   0%|          | 1786/1000000 [00:05<49:13, 337.94steps/s]
+actor loss: -2.6311757564544678 - critic loss 0.8789550065994263
+req True
+False None
+actor loss: -3.0524742603302 - critic loss 1.088464379310608
+req True
+False None
+actor loss: -3.4378702640533447 - critic loss 1.2603517770767212
+req True
+False None
+actor loss: -2.4400551319122314 - critic loss 0.7890105843544006
+req True
+False None
+actor loss: -2.844182252883911 - critic loss 0.9888315796852112
+
+Max Steps:   0%|          | 2421/1000000 [00:07<49:50, 333.63steps/s]
+False None
+actor loss: -2.4313547611236572 - critic loss 0.6740105152130127
+req True
+False None
+actor loss: -2.1390411853790283 - critic loss 0.5169009566307068
+req True
+False None
+actor loss: -2.117830991744995 - critic loss 0.6742852926254272
+req True
+False None
+actor loss: -3.048332929611206 - critic loss 0.9697598814964294
+req True
+False None
+
+Max Steps:   0%|          | 3024/1000000 [00:09<56:06, 296.14steps/s]
+req True
+False None
+actor loss: -1.5067389011383057 - critic loss 0.3254900872707367
+req True
+False None
+actor loss: -2.5442252159118652 - critic loss 0.8318995833396912
+req True
+False None
+actor loss: -1.7514479160308838 - critic loss 0.5312986373901367
+req True
+False None
+actor loss: -3.1253445148468018 - critic loss 1.1256605386734009
+req True
+False None
+
+Max Steps:   0%|          | 3283/1000000 [00:10<52:36, 315.73steps/s]
+req True
+False None
+actor loss: -1.8346859216690063 - critic loss 0.4606650471687317
+req True
+False None
+actor loss: -2.5442397594451904 - critic loss 0.83188796043396

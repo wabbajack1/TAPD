@@ -1,0 +1,46 @@
+2023-03-24 14:21:23,323 INFO    StreamThr :274776 [internal.py:wandb_internal():90] W&B internal server running at pid: 274776, started at: 2023-03-24 14:21:23.323172
+2023-03-24 14:21:23,326 DEBUG   HandlerThread:274776 [handler.py:handle_request():144] handle_request: status
+2023-03-24 14:21:23,328 INFO    WriterThread:274776 [datastore.py:open_for_write():85] open: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/wandb/run-20230324_142123-x8lmxayk/run-x8lmxayk.wandb
+2023-03-24 14:21:23,329 DEBUG   SenderThread:274776 [sender.py:send():336] send: header
+2023-03-24 14:21:23,340 DEBUG   SenderThread:274776 [sender.py:send():336] send: run
+2023-03-24 14:21:23,683 INFO    SenderThread:274776 [dir_watcher.py:__init__():216] watching files in: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/wandb/run-20230324_142123-x8lmxayk/files
+2023-03-24 14:21:23,684 INFO    SenderThread:274776 [sender.py:_start_run_threads():1070] run started: x8lmxayk with start time 1679664083.322899
+2023-03-24 14:21:23,684 DEBUG   SenderThread:274776 [sender.py:send_request():363] send_request: summary_record
+2023-03-24 14:21:23,684 INFO    SenderThread:274776 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-24 14:21:23,687 DEBUG   HandlerThread:274776 [handler.py:handle_request():144] handle_request: check_version
+2023-03-24 14:21:23,687 DEBUG   SenderThread:274776 [sender.py:send_request():363] send_request: check_version
+2023-03-24 14:21:23,752 DEBUG   HandlerThread:274776 [handler.py:handle_request():144] handle_request: run_start
+2023-03-24 14:21:23,763 DEBUG   HandlerThread:274776 [system_info.py:__init__():31] System info init
+2023-03-24 14:21:23,763 DEBUG   HandlerThread:274776 [system_info.py:__init__():46] System info init done
+2023-03-24 14:21:23,763 INFO    HandlerThread:274776 [system_monitor.py:start():151] Starting system monitor
+2023-03-24 14:21:23,763 INFO    SystemMonitor:274776 [system_monitor.py:_start():116] Starting system asset monitoring threads
+2023-03-24 14:21:23,764 INFO    HandlerThread:274776 [system_monitor.py:probe():172] Collecting system info
+2023-03-24 14:21:23,764 INFO    SystemMonitor:274776 [interfaces.py:start():168] Started cpu
+2023-03-24 14:21:23,765 INFO    SystemMonitor:274776 [interfaces.py:start():168] Started disk
+2023-03-24 14:21:23,766 INFO    SystemMonitor:274776 [interfaces.py:start():168] Started gpu
+2023-03-24 14:21:23,767 INFO    SystemMonitor:274776 [interfaces.py:start():168] Started memory
+2023-03-24 14:21:23,767 INFO    SystemMonitor:274776 [interfaces.py:start():168] Started network
+2023-03-24 14:21:23,798 DEBUG   HandlerThread:274776 [system_info.py:probe():195] Probing system
+2023-03-24 14:21:23,817 DEBUG   HandlerThread:274776 [system_info.py:_probe_git():180] Probing git
+2023-03-24 14:21:23,853 DEBUG   HandlerThread:274776 [system_info.py:_probe_git():188] Probing git done
+2023-03-24 14:21:23,853 DEBUG   HandlerThread:274776 [system_info.py:probe():241] Probing system done
+2023-03-24 14:21:23,853 DEBUG   HandlerThread:274776 [system_monitor.py:probe():181] {'os': 'Linux-5.13.0-52-generic-x86_64-with-debian-11.0', 'python': '3.7.11', 'heartbeatAt': '2023-03-24T13:21:23.798774', 'startedAt': '2023-03-24T13:21:23.304234', 'docker': None, 'cuda': None, 'args': ('-w', '10'), 'state': 'running', 'program': 'runner.py', 'codePath': 'src/runner.py', 'git': {'remote': None, 'commit': 'a64c298d9b54aed3fb7ea374d3ecaa27496a7e16'}, 'email': 'kidim4444@gmail.com', 'root': '/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main', 'host': 'Kidim10', 'username': 'kidimerek', 'executable': '/home/kidimerek/miniconda3/bin/python3', 'cpu_count': 4, 'cpu_count_logical': 4, 'cpu_freq': {'current': 2913.90075, 'min': 800.0, 'max': 4200.0}, 'cpu_freq_per_core': [{'current': 3600.0, 'min': 800.0, 'max': 4200.0}, {'current': 855.603, 'min': 800.0, 'max': 4200.0}, {'current': 3600.0, 'min': 800.0, 'max': 4200.0}, {'current': 3600.0, 'min': 800.0, 'max': 4200.0}], 'disk': {'total': 227.67544174194336, 'used': 143.7638931274414}, 'gpu': 'NVIDIA GeForce GTX 1660 SUPER', 'gpu_count': 1, 'gpu_devices': [{'name': 'NVIDIA GeForce GTX 1660 SUPER', 'memory_total': 6232014848}], 'memory': {'total': 15.565906524658203}}
+2023-03-24 14:21:23,854 INFO    HandlerThread:274776 [system_monitor.py:probe():182] Finished collecting system info
+2023-03-24 14:21:23,854 INFO    HandlerThread:274776 [system_monitor.py:probe():185] Publishing system info
+2023-03-24 14:21:23,854 DEBUG   HandlerThread:274776 [system_info.py:_save_pip():52] Saving list of pip packages installed into the current environment
+2023-03-24 14:21:23,854 DEBUG   HandlerThread:274776 [system_info.py:_save_pip():67] Saving pip packages done
+2023-03-24 14:21:23,854 DEBUG   HandlerThread:274776 [system_info.py:_save_conda():75] Saving list of conda packages installed into the current environment
+2023-03-24 14:21:24,691 INFO    Thread-13 :274776 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/wandb/run-20230324_142123-x8lmxayk/files/requirements.txt
+2023-03-24 14:21:24,692 INFO    Thread-13 :274776 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/wandb/run-20230324_142123-x8lmxayk/files/wandb-summary.json
+2023-03-24 14:21:24,693 INFO    Thread-13 :274776 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/wandb/run-20230324_142123-x8lmxayk/files/conda-environment.yaml
+2023-03-24 14:21:27,172 DEBUG   HandlerThread:274776 [system_info.py:_save_conda():86] Saving conda packages done
+2023-03-24 14:21:27,173 INFO    HandlerThread:274776 [system_monitor.py:probe():187] Finished publishing system info
+2023-03-24 14:21:27,184 DEBUG   SenderThread:274776 [sender.py:send():336] send: files
+2023-03-24 14:21:27,184 INFO    SenderThread:274776 [sender.py:_save_file():1321] saving file wandb-metadata.json with policy now
+2023-03-24 14:21:27,195 DEBUG   HandlerThread:274776 [handler.py:handle_request():144] handle_request: stop_status
+2023-03-24 14:21:27,195 DEBUG   SenderThread:274776 [sender.py:send_request():363] send_request: stop_status
+2023-03-24 14:21:27,343 DEBUG   SenderThread:274776 [sender.py:send():336] send: telemetry
+2023-03-24 14:21:27,671 INFO    wandb-upload_0:274776 [upload_job.py:push():138] Uploaded file /tmp/tmpz_w7h1xpwandb/bn7fgkaw-wandb-metadata.json
+2023-03-24 14:21:27,689 INFO    Thread-13 :274776 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/wandb/run-20230324_142123-x8lmxayk/files/conda-environment.yaml
+2023-03-24 14:21:27,689 INFO    Thread-13 :274776 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/wandb/run-20230324_142123-x8lmxayk/files/wandb-metadata.json
+2023-03-24 14:21:27,689 INFO    Thread-13 :274776 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/wandb/run-20230324_142123-x8lmxayk/files/output.log

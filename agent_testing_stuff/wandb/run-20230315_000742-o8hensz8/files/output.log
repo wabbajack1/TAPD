@@ -1,0 +1,46 @@
+Max Steps:   0%|                                             | 0/1000000 [00:00<?, ?steps/s]/tmp/ipykernel_25553/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|                                  | 674/1000000 [00:01<37:41, 441.93steps/s]
+Run model on cuda
+==================TRAIN TASK 0======================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Max Steps:   2%|▋                               | 23165/1000000 [00:55<38:55, 418.33steps/s]
+cuda:0
+The size of frame is:  (210, 160, 3)
+No. of Actions:  18
+Your Score at end of game is:  35.0
+The size of frame is:  (210, 160, 3)
+No. of Actions:  18
+{'lives': 0, 'episode_frame_number': 0, 'frame_number': 0}
+/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/gym/envs/registration.py:555: UserWarning: [33mWARN: The environment SpaceInvaders-v0 is out of date. You should consider upgrading to version `v4`.
+  logger.warn(
+/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/gym/utils/passive_env_checker.py:289: UserWarning: [33mWARN: No render fps was declared in the environment (env.metadata['render_fps'] is None or not defined), rendering may occur at inconsistent fps.
+  logger.warn(
+/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/gym/utils/passive_env_checker.py:233: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+  if not isinstance(terminated, (bool, np.bool8)):

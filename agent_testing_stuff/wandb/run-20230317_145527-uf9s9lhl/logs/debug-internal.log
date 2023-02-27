@@ -1,0 +1,334 @@
+2023-03-17 14:55:32,464 INFO    StreamThr :7993 [internal.py:wandb_internal():87] W&B internal server running at pid: 7993, started at: 2023-03-17 14:55:32.463233
+2023-03-17 14:55:32,468 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status
+2023-03-17 14:55:32,471 INFO    WriterThread:7993 [datastore.py:open_for_write():85] open: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/run-uf9s9lhl.wandb
+2023-03-17 14:55:32,475 DEBUG   SenderThread:7993 [sender.py:send():336] send: header
+2023-03-17 14:55:32,475 DEBUG   SenderThread:7993 [sender.py:send():336] send: run
+2023-03-17 14:55:32,876 INFO    SenderThread:7993 [dir_watcher.py:__init__():216] watching files in: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files
+2023-03-17 14:55:32,876 INFO    SenderThread:7993 [sender.py:_start_run_threads():1067] run started: uf9s9lhl with start time 1679061331.47936
+2023-03-17 14:55:32,876 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:32,876 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:32,880 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: check_version
+2023-03-17 14:55:32,881 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: check_version
+2023-03-17 14:55:32,956 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: run_start
+2023-03-17 14:55:32,958 DEBUG   HandlerThread:7993 [system_info.py:__init__():31] System info init
+2023-03-17 14:55:32,958 DEBUG   HandlerThread:7993 [system_info.py:__init__():46] System info init done
+2023-03-17 14:55:32,958 INFO    HandlerThread:7993 [system_monitor.py:start():151] Starting system monitor
+2023-03-17 14:55:32,958 INFO    SystemMonitor:7993 [system_monitor.py:_start():116] Starting system asset monitoring threads
+2023-03-17 14:55:32,958 INFO    HandlerThread:7993 [system_monitor.py:probe():172] Collecting system info
+2023-03-17 14:55:32,959 INFO    SystemMonitor:7993 [interfaces.py:start():168] Started cpu
+2023-03-17 14:55:32,960 INFO    SystemMonitor:7993 [interfaces.py:start():168] Started disk
+2023-03-17 14:55:32,961 INFO    SystemMonitor:7993 [interfaces.py:start():168] Started gpu
+2023-03-17 14:55:32,961 INFO    SystemMonitor:7993 [interfaces.py:start():168] Started memory
+2023-03-17 14:55:32,962 INFO    SystemMonitor:7993 [interfaces.py:start():168] Started network
+2023-03-17 14:55:32,983 DEBUG   HandlerThread:7993 [system_info.py:probe():195] Probing system
+2023-03-17 14:55:32,984 DEBUG   HandlerThread:7993 [system_info.py:_probe_git():180] Probing git
+2023-03-17 14:55:33,000 DEBUG   HandlerThread:7993 [system_info.py:_probe_git():188] Probing git done
+2023-03-17 14:55:33,000 DEBUG   HandlerThread:7993 [system_info.py:probe():241] Probing system done
+2023-03-17 14:55:33,000 DEBUG   HandlerThread:7993 [system_monitor.py:probe():181] {'os': 'Linux-5.13.0-52-generic-x86_64-with-glibc2.34', 'python': '3.9.7', 'heartbeatAt': '2023-03-17T13:55:32.983886', 'startedAt': '2023-03-17T13:55:27.026954', 'docker': None, 'cuda': None, 'args': None, 'state': 'running', 'program': '<python with no main file>', 'git': {'remote': None, 'commit': '1e9a547267c88ec34a07e3048fc6d3762644e022'}, 'email': 'kidim4444@gmail.com', 'root': '/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main', 'host': 'Kidim10', 'username': 'kidimerek', 'executable': '/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/bin/python', 'cpu_count': 4, 'cpu_count_logical': 4, 'cpu_freq': {'current': 2273.4342500000002, 'min': 800.0, 'max': 4200.0}, 'cpu_freq_per_core': [{'current': 3600.0, 'min': 800.0, 'max': 4200.0}, {'current': 1741.434, 'min': 800.0, 'max': 4200.0}, {'current': 2028.8, 'min': 800.0, 'max': 4200.0}, {'current': 3600.0, 'min': 800.0, 'max': 4200.0}], 'disk': {'total': 227.67544174194336, 'used': 123.34700775146484}, 'gpu': 'NVIDIA GeForce GTX 1660 SUPER', 'gpu_count': 1, 'gpu_devices': [{'name': 'NVIDIA GeForce GTX 1660 SUPER', 'memory_total': 6232014848}], 'memory': {'total': 15.565906524658203}}
+2023-03-17 14:55:33,000 INFO    HandlerThread:7993 [system_monitor.py:probe():182] Finished collecting system info
+2023-03-17 14:55:33,000 INFO    HandlerThread:7993 [system_monitor.py:probe():185] Publishing system info
+2023-03-17 14:55:33,000 DEBUG   HandlerThread:7993 [system_info.py:_save_pip():51] Saving list of pip packages installed into the current environment
+2023-03-17 14:55:33,000 DEBUG   HandlerThread:7993 [system_info.py:_save_pip():67] Saving pip packages done
+2023-03-17 14:55:33,001 INFO    HandlerThread:7993 [system_monitor.py:probe():187] Finished publishing system info
+2023-03-17 14:55:33,002 DEBUG   SenderThread:7993 [sender.py:send():336] send: files
+2023-03-17 14:55:33,002 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-metadata.json with policy now
+2023-03-17 14:55:33,021 DEBUG   SenderThread:7993 [sender.py:send():336] send: telemetry
+2023-03-17 14:55:33,025 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: stop_status
+2023-03-17 14:55:33,026 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: stop_status
+2023-03-17 14:55:33,410 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:33,411 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:33,411 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:33,412 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:33,492 INFO    wandb-upload_0:7993 [upload_job.py:push():138] Uploaded file /tmp/tmptz18mpd4wandb/827caobq-wandb-metadata.json
+2023-03-17 14:55:33,799 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:33,800 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:33,800 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:33,800 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:33,877 INFO    Thread-145:7993 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json
+2023-03-17 14:55:33,878 INFO    Thread-145:7993 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-metadata.json
+2023-03-17 14:55:33,878 INFO    Thread-145:7993 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/output.log
+2023-03-17 14:55:33,878 INFO    Thread-145:7993 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/requirements.txt
+2023-03-17 14:55:34,164 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:34,165 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:34,165 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:34,165 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:34,523 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:34,524 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:34,524 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:34,524 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:34,877 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json
+2023-03-17 14:55:34,877 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:34,877 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:34,878 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:34,879 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:35,228 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:35,228 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:35,228 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:35,229 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:35,584 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:35,585 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:35,585 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:35,585 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:35,877 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/output.log
+2023-03-17 14:55:35,877 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json
+2023-03-17 14:55:35,946 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:35,947 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:35,947 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:35,947 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:36,314 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:36,315 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:36,315 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:36,315 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:36,689 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:36,690 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:36,690 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:36,690 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:36,796 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:36,796 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:36,796 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:36,797 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:36,877 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json
+2023-03-17 14:55:37,097 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:37,098 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:37,098 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:37,100 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:37,525 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:37,526 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:37,526 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:37,526 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:37,526 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:55:37,877 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/output.log
+2023-03-17 14:55:37,878 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json
+2023-03-17 14:55:37,888 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:37,889 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:37,889 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:37,889 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:38,254 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-17 14:55:38,254 DEBUG   SenderThread:7993 [sender.py:send():336] send: history
+2023-03-17 14:55:38,254 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: summary_record
+2023-03-17 14:55:38,255 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:55:38,878 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json
+2023-03-17 14:55:39,879 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/output.log
+2023-03-17 14:55:43,313 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:55:48,013 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:55:48,014 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:55:48,314 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:55:53,015 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:55:53,315 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:55:58,016 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:55:58,316 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:03,017 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:03,320 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:03,892 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/config.yaml
+2023-03-17 14:56:08,018 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:08,715 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:13,019 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:13,716 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:18,020 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:18,717 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:23,022 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:23,718 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:28,023 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:28,719 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:32,963 DEBUG   SystemMonitor:7993 [system_monitor.py:_start():130] Starting system metrics aggregation loop
+2023-03-17 14:56:32,965 DEBUG   SenderThread:7993 [sender.py:send():336] send: stats
+2023-03-17 14:56:33,023 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:33,967 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:38,025 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:38,968 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:43,026 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:43,969 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:48,027 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:48,970 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:53,028 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:53,972 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:56:58,030 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:56:58,973 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:02,966 DEBUG   SenderThread:7993 [sender.py:send():336] send: stats
+2023-03-17 14:57:03,031 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:04,968 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:08,032 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:09,969 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:13,033 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:14,970 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:18,034 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:19,971 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:23,035 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:24,973 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:28,036 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:29,974 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:32,968 DEBUG   SenderThread:7993 [sender.py:send():336] send: stats
+2023-03-17 14:57:33,038 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:35,969 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:38,039 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:40,971 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:43,040 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:45,972 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:48,042 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:50,973 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:53,043 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:57:55,974 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:57:58,044 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:00,975 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:02,969 DEBUG   SenderThread:7993 [sender.py:send():336] send: stats
+2023-03-17 14:58:03,046 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:06,970 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:08,046 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:11,971 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:13,048 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:16,973 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:18,049 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:21,974 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:23,049 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:26,975 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:28,051 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:31,976 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:32,971 DEBUG   SenderThread:7993 [sender.py:send():336] send: stats
+2023-03-17 14:58:33,052 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:37,973 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:38,053 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:42,974 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:43,054 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:47,975 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:48,055 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:52,977 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:53,056 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:58:57,978 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:58:58,057 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:59:02,972 DEBUG   SenderThread:7993 [sender.py:send():336] send: stats
+2023-03-17 14:59:03,058 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:59:03,973 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:59:08,060 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:59:08,974 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:59:13,060 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:59:13,975 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:59:18,061 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:59:18,976 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:59:23,062 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:59:23,977 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:59:28,063 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-17 14:59:28,978 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:59:32,527 DEBUG   SenderThread:7993 [sender.py:send():336] send: telemetry
+2023-03-17 14:59:32,528 DEBUG   SenderThread:7993 [sender.py:send():336] send: exit
+2023-03-17 14:59:32,528 INFO    SenderThread:7993 [sender.py:send_exit():559] handling exit code: 0
+2023-03-17 14:59:32,528 INFO    SenderThread:7993 [sender.py:send_exit():561] handling runtime: 239
+2023-03-17 14:59:32,529 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:59:32,530 INFO    SenderThread:7993 [sender.py:send_exit():567] send defer
+2023-03-17 14:59:32,530 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:32,530 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 0
+2023-03-17 14:59:32,530 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:32,530 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 0
+2023-03-17 14:59:32,530 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 1
+2023-03-17 14:59:32,530 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:32,530 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 1
+2023-03-17 14:59:32,530 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:32,530 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 1
+2023-03-17 14:59:32,530 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 2
+2023-03-17 14:59:32,530 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:32,530 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 2
+2023-03-17 14:59:32,530 INFO    HandlerThread:7993 [system_monitor.py:finish():161] Stopping system monitor
+2023-03-17 14:59:32,531 DEBUG   SystemMonitor:7993 [system_monitor.py:_start():137] Finished system metrics aggregation loop
+2023-03-17 14:59:32,531 DEBUG   SystemMonitor:7993 [system_monitor.py:_start():141] Publishing last batch of metrics
+2023-03-17 14:59:32,535 INFO    HandlerThread:7993 [interfaces.py:finish():175] Joined cpu
+2023-03-17 14:59:32,535 INFO    HandlerThread:7993 [interfaces.py:finish():175] Joined disk
+2023-03-17 14:59:32,572 INFO    HandlerThread:7993 [interfaces.py:finish():175] Joined gpu
+2023-03-17 14:59:32,572 INFO    HandlerThread:7993 [interfaces.py:finish():175] Joined memory
+2023-03-17 14:59:32,572 INFO    HandlerThread:7993 [interfaces.py:finish():175] Joined network
+2023-03-17 14:59:32,572 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:32,572 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 2
+2023-03-17 14:59:32,572 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 3
+2023-03-17 14:59:32,572 DEBUG   SenderThread:7993 [sender.py:send():336] send: stats
+2023-03-17 14:59:32,572 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:32,572 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 3
+2023-03-17 14:59:32,573 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:32,573 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 3
+2023-03-17 14:59:32,573 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 4
+2023-03-17 14:59:32,573 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:32,573 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 4
+2023-03-17 14:59:32,573 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:32,573 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 4
+2023-03-17 14:59:32,573 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 5
+2023-03-17 14:59:32,574 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:32,574 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 5
+2023-03-17 14:59:32,574 DEBUG   SenderThread:7993 [sender.py:send():336] send: summary
+2023-03-17 14:59:32,574 INFO    SenderThread:7993 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-17 14:59:32,574 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:32,574 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 5
+2023-03-17 14:59:32,574 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 6
+2023-03-17 14:59:32,574 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:32,574 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 6
+2023-03-17 14:59:32,575 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:32,575 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 6
+2023-03-17 14:59:32,578 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: status_report
+2023-03-17 14:59:32,775 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 7
+2023-03-17 14:59:32,776 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:32,776 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 7
+2023-03-17 14:59:32,777 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:32,777 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 7
+2023-03-17 14:59:33,002 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/config.yaml
+2023-03-17 14:59:33,003 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json
+2023-03-17 14:59:33,529 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: poll_exit
+2023-03-17 14:59:35,406 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 8
+2023-03-17 14:59:35,406 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: poll_exit
+2023-03-17 14:59:35,406 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:35,407 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 8
+2023-03-17 14:59:35,408 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:35,408 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 8
+2023-03-17 14:59:35,408 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 9
+2023-03-17 14:59:35,409 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:35,409 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 9
+2023-03-17 14:59:35,409 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:35,410 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 9
+2023-03-17 14:59:35,410 INFO    SenderThread:7993 [dir_watcher.py:finish():362] shutting down directory watcher
+2023-03-17 14:59:36,003 INFO    Thread-145:7993 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/output.log
+2023-03-17 14:59:36,005 INFO    SenderThread:7993 [dir_watcher.py:finish():392] scan: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files
+2023-03-17 14:59:36,005 INFO    SenderThread:7993 [dir_watcher.py:finish():406] scan save: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-metadata.json wandb-metadata.json
+2023-03-17 14:59:36,005 INFO    SenderThread:7993 [dir_watcher.py:finish():406] scan save: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/requirements.txt requirements.txt
+2023-03-17 14:59:36,006 INFO    SenderThread:7993 [dir_watcher.py:finish():406] scan save: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/config.yaml config.yaml
+2023-03-17 14:59:36,012 INFO    SenderThread:7993 [dir_watcher.py:finish():406] scan save: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/output.log output.log
+2023-03-17 14:59:36,017 INFO    SenderThread:7993 [dir_watcher.py:finish():406] scan save: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json wandb-summary.json
+2023-03-17 14:59:36,032 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 10
+2023-03-17 14:59:36,043 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:36,044 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 10
+2023-03-17 14:59:36,046 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:36,046 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 10
+2023-03-17 14:59:36,048 INFO    SenderThread:7993 [file_pusher.py:finish():162] shutting down file pusher
+2023-03-17 14:59:36,559 INFO    wandb-upload_0:7993 [upload_job.py:push():138] Uploaded file /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/requirements.txt
+2023-03-17 14:59:36,623 INFO    wandb-upload_1:7993 [upload_job.py:push():138] Uploaded file /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/config.yaml
+2023-03-17 14:59:36,625 INFO    wandb-upload_2:7993 [upload_job.py:push():138] Uploaded file /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/output.log
+2023-03-17 14:59:36,639 INFO    wandb-upload_3:7993 [upload_job.py:push():138] Uploaded file /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/files/wandb-summary.json
+2023-03-17 14:59:36,840 INFO    Thread-144:7993 [sender.py:transition_state():587] send defer: 11
+2023-03-17 14:59:36,840 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:36,841 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 11
+2023-03-17 14:59:36,841 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:36,842 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 11
+2023-03-17 14:59:36,842 INFO    SenderThread:7993 [file_pusher.py:join():167] waiting for file pusher
+2023-03-17 14:59:36,842 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 12
+2023-03-17 14:59:36,842 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:36,843 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 12
+2023-03-17 14:59:36,844 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:36,844 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 12
+2023-03-17 14:59:37,361 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 13
+2023-03-17 14:59:37,362 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:37,362 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 13
+2023-03-17 14:59:37,363 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:37,363 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 13
+2023-03-17 14:59:37,363 INFO    SenderThread:7993 [sender.py:transition_state():587] send defer: 14
+2023-03-17 14:59:37,364 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: defer
+2023-03-17 14:59:37,364 INFO    HandlerThread:7993 [handler.py:handle_request_defer():170] handle defer: 14
+2023-03-17 14:59:37,365 DEBUG   SenderThread:7993 [sender.py:send():336] send: final
+2023-03-17 14:59:37,366 DEBUG   SenderThread:7993 [sender.py:send():336] send: footer
+2023-03-17 14:59:37,366 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: defer
+2023-03-17 14:59:37,366 INFO    SenderThread:7993 [sender.py:send_request_defer():583] handle sender defer: 14
+2023-03-17 14:59:37,370 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: poll_exit
+2023-03-17 14:59:37,370 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: server_info
+2023-03-17 14:59:37,371 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: get_summary
+2023-03-17 14:59:37,372 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: sampled_history
+2023-03-17 14:59:37,372 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: poll_exit
+2023-03-17 14:59:37,374 DEBUG   SenderThread:7993 [sender.py:send_request():363] send_request: server_info
+2023-03-17 14:59:37,706 DEBUG   HandlerThread:7993 [handler.py:handle_request():144] handle_request: shutdown
+2023-03-17 14:59:37,706 INFO    HandlerThread:7993 [handler.py:finish():841] shutting down handler
+2023-03-17 14:59:38,372 INFO    WriterThread:7993 [datastore.py:close():299] close: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_145527-uf9s9lhl/run-uf9s9lhl.wandb
+2023-03-17 14:59:38,704 INFO    SenderThread:7993 [sender.py:finish():1493] shutting down sender
+2023-03-17 14:59:38,705 INFO    SenderThread:7993 [file_pusher.py:finish():162] shutting down file pusher
+2023-03-17 14:59:38,705 INFO    SenderThread:7993 [file_pusher.py:join():167] waiting for file pusher

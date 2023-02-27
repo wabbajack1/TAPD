@@ -1,0 +1,65 @@
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+tensor(299.2481, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -0.7631772756576538 - critic loss 0.12418055534362793
+tensor(299.2487, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -2.37158203125 - critic loss 0.7641448974609375
+tensor(299.2508, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -2.7190723419189453 - critic loss 0.9193176627159119
+tensor(299.2522, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -1.9796512126922607 - critic loss 0.467412531375885
+Max Steps:   0%|          | 0/1000000 [00:00<?, ?steps/s]/tmp/ipykernel_4818/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|          | 576/1000000 [00:02<1:00:38, 274.70steps/s]
+tensor(299.2523, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -1.9734786748886108 - critic loss 0.4591835141181946
+tensor(299.2541, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -3.1027021408081055 - critic loss 1.0744755268096924
+tensor(299.2525, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -2.086717128753662 - critic loss 0.6247153282165527
+tensor(299.2526, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -1.4040753841400146 - critic loss 0.28609976172447205
+
+
+Max Steps:   0%|          | 1542/1000000 [00:05<52:52, 314.69steps/s]
+actor loss: 0.39932242035865784 - critic loss 0.018264690414071083
+tensor(299.2526, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -2.800659656524658 - critic loss 0.8037821054458618
+tensor(299.2531, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -2.0639686584472656 - critic loss 0.5743159651756287
+tensor(299.2560, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -1.4253969192504883 - critic loss 0.2757560610771179
+
+Max Steps:   0%|          | 2071/1000000 [00:07<51:40, 321.88steps/s]
+actor loss: -2.284595251083374 - critic loss 0.6300676465034485
+tensor(299.2568, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -2.2685446739196777 - critic loss 0.5608800649642944
+tensor(299.2581, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -0.4479949176311493 - critic loss 0.08153796195983887
+tensor(299.2587, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: 0.22570748627185822 - critic loss 0.06465718150138855
+
+Max Steps:   0%|          | 2588/1000000 [00:09<55:29, 299.59steps/s]
+actor loss: -0.8660714030265808 - critic loss 0.12821505963802338
+tensor(299.2595, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: 1.9074547290802002 - critic loss 0.41486117243766785
+tensor(299.2604, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -2.316826343536377 - critic loss 0.583319365978241
+tensor(299.2605, device='cuda:0', grad_fn=<AddBackward0>)
+actor loss: -0.5671256184577942 - critic loss 0.098507359623909
+
+Max Steps:   0%|          | 2729/1000000 [00:10<1:01:49, 268.87steps/s]
+Exception in thread SystemMonitor:
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/system_monitor.py", line 118, in _start
+    asset.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/disk.py", line 76, in start
+    self.metrics_monitor.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/interfaces.py", line 168, in start
+    logger.info(f"Started {self._process.name}")
+AttributeError: 'NoneType' object has no attribute 'name'

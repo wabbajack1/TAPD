@@ -1,0 +1,46 @@
+Max Steps:   0%|          | 0/1000000 [00:00<?, ?steps/s]/tmp/ipykernel_59759/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|          | 259/1000000 [00:00<53:41, 310.37steps/s]
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+tensor([[-9.3761e-01, -9.4661e-01, -9.5570e-01,  ...,  4.7489e-04,
+          9.4720e-04,  1.4243e-03],
+        [-9.3752e-01, -9.4652e-01, -9.5561e-01,  ...,  5.6668e-04,
+          1.0390e-03,  1.5161e-03],
+        [-9.3857e-01, -9.4758e-01, -9.5667e-01,  ..., -4.9205e-04,
+         -1.9740e-05,  4.5734e-04],
+        ...,
+        [-9.3935e-01, -9.4835e-01, -9.5745e-01,  ..., -1.2663e-03,
+         -7.9403e-04, -3.1695e-04],
+        [-9.3956e-01, -9.4856e-01, -9.5766e-01,  ..., -1.4768e-03,
+         -1.0045e-03, -5.2742e-04],
+        [-9.3949e-01, -9.4849e-01, -9.5758e-01,  ..., -1.4052e-03,
+         -9.3288e-04, -4.5579e-04]], device='cuda:0')
+actor loss: -2.002105951309204 - critic loss 0.5260842442512512
+tensor([[-2.1683e+00, -2.1897e+00, -2.2113e+00,  ..., -1.9852e-03,
+         -1.5185e-03, -1.0471e-03],
+        [-2.1683e+00, -2.1897e+00, -2.2113e+00,  ..., -1.9941e-03,
+         -1.5274e-03, -1.0560e-03],
+        [-2.1685e+00, -2.1899e+00, -2.2115e+00,  ..., -2.1478e-03,
+         -1.6810e-03, -1.2096e-03],
+        ...,
+        [-2.1681e+00, -2.1895e+00, -2.2111e+00,  ..., -1.7884e-03,
+         -1.3216e-03, -8.5022e-04],
+        [-2.1680e+00, -2.1894e+00, -2.2111e+00,  ..., -1.7035e-03,
+         -1.2368e-03, -7.6540e-04],
+        [-2.1682e+00, -2.1896e+00, -2.2113e+00,  ..., -1.9070e-03,
+         -1.4403e-03, -9.6887e-04]], device='cuda:0')
+Exception in thread SystemMonitor:
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/system_monitor.py", line 118, in _start
+    asset.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/cpu.py", line 166, in start
+    self.metrics_monitor.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/interfaces.py", line 168, in start
+    logger.info(f"Started {self._process.name}")
+AttributeError: 'NoneType' object has no attribute 'name'

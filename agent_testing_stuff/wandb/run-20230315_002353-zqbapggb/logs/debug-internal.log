@@ -1,0 +1,220 @@
+2023-03-15 00:23:58,519 INFO    StreamThr :29314 [internal.py:wandb_internal():87] W&B internal server running at pid: 29314, started at: 2023-03-15 00:23:58.517292
+2023-03-15 00:23:58,529 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status
+2023-03-15 00:23:58,531 INFO    WriterThread:29314 [datastore.py:open_for_write():85] open: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/run-zqbapggb.wandb
+2023-03-15 00:23:58,533 DEBUG   SenderThread:29314 [sender.py:send():336] send: header
+2023-03-15 00:23:58,533 DEBUG   SenderThread:29314 [sender.py:send():336] send: run
+2023-03-15 00:23:58,952 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: check_version
+2023-03-15 00:23:58,953 INFO    SenderThread:29314 [dir_watcher.py:__init__():216] watching files in: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files
+2023-03-15 00:23:58,953 INFO    SenderThread:29314 [sender.py:_start_run_threads():1067] run started: zqbapggb with start time 1678836237.527529
+2023-03-15 00:23:58,954 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:23:58,954 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:23:58,954 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: check_version
+2023-03-15 00:23:59,044 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: run_start
+2023-03-15 00:23:59,046 DEBUG   HandlerThread:29314 [system_info.py:__init__():31] System info init
+2023-03-15 00:23:59,046 DEBUG   HandlerThread:29314 [system_info.py:__init__():46] System info init done
+2023-03-15 00:23:59,046 INFO    HandlerThread:29314 [system_monitor.py:start():151] Starting system monitor
+2023-03-15 00:23:59,046 INFO    SystemMonitor:29314 [system_monitor.py:_start():116] Starting system asset monitoring threads
+2023-03-15 00:23:59,047 INFO    HandlerThread:29314 [system_monitor.py:probe():172] Collecting system info
+2023-03-15 00:23:59,047 INFO    SystemMonitor:29314 [interfaces.py:start():168] Started cpu
+2023-03-15 00:23:59,048 INFO    SystemMonitor:29314 [interfaces.py:start():168] Started disk
+2023-03-15 00:23:59,049 INFO    SystemMonitor:29314 [interfaces.py:start():168] Started gpu
+2023-03-15 00:23:59,050 INFO    SystemMonitor:29314 [interfaces.py:start():168] Started memory
+2023-03-15 00:23:59,050 INFO    SystemMonitor:29314 [interfaces.py:start():168] Started network
+2023-03-15 00:23:59,075 DEBUG   HandlerThread:29314 [system_info.py:probe():195] Probing system
+2023-03-15 00:23:59,076 DEBUG   HandlerThread:29314 [system_info.py:_probe_git():180] Probing git
+2023-03-15 00:23:59,098 DEBUG   HandlerThread:29314 [system_info.py:_probe_git():188] Probing git done
+2023-03-15 00:23:59,099 DEBUG   HandlerThread:29314 [system_info.py:probe():241] Probing system done
+2023-03-15 00:23:59,099 DEBUG   HandlerThread:29314 [system_monitor.py:probe():181] {'os': 'Linux-5.13.0-52-generic-x86_64-with-glibc2.34', 'python': '3.9.7', 'heartbeatAt': '2023-03-14T23:23:59.075174', 'startedAt': '2023-03-14T23:23:53.170153', 'docker': None, 'cuda': None, 'args': None, 'state': 'running', 'program': '<python with no main file>', 'git': {'remote': None, 'commit': '1e9a547267c88ec34a07e3048fc6d3762644e022'}, 'email': 'kidim4444@gmail.com', 'root': '/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main', 'host': 'Kidim10', 'username': 'kidimerek', 'executable': '/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/bin/python3', 'cpu_count': 4, 'cpu_count_logical': 4, 'cpu_freq': {'current': 3099.4135, 'min': 800.0, 'max': 4200.0}, 'cpu_freq_per_core': [{'current': 1597.654, 'min': 800.0, 'max': 4200.0}, {'current': 3600.0, 'min': 800.0, 'max': 4200.0}, {'current': 3600.0, 'min': 800.0, 'max': 4200.0}, {'current': 3600.0, 'min': 800.0, 'max': 4200.0}], 'disk': {'total': 227.67544174194336, 'used': 123.20318984985352}, 'gpu': 'NVIDIA GeForce GTX 1660 SUPER', 'gpu_count': 1, 'gpu_devices': [{'name': 'NVIDIA GeForce GTX 1660 SUPER', 'memory_total': 6232014848}], 'memory': {'total': 15.565906524658203}}
+2023-03-15 00:23:59,099 INFO    HandlerThread:29314 [system_monitor.py:probe():182] Finished collecting system info
+2023-03-15 00:23:59,099 INFO    HandlerThread:29314 [system_monitor.py:probe():185] Publishing system info
+2023-03-15 00:23:59,099 DEBUG   HandlerThread:29314 [system_info.py:_save_pip():51] Saving list of pip packages installed into the current environment
+2023-03-15 00:23:59,100 DEBUG   HandlerThread:29314 [system_info.py:_save_pip():67] Saving pip packages done
+2023-03-15 00:23:59,100 INFO    HandlerThread:29314 [system_monitor.py:probe():187] Finished publishing system info
+2023-03-15 00:23:59,102 DEBUG   SenderThread:29314 [sender.py:send():336] send: files
+2023-03-15 00:23:59,102 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-metadata.json with policy now
+2023-03-15 00:23:59,170 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: stop_status
+2023-03-15 00:23:59,174 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: stop_status
+2023-03-15 00:23:59,339 DEBUG   SenderThread:29314 [sender.py:send():336] send: telemetry
+2023-03-15 00:23:59,639 INFO    wandb-upload_0:29314 [upload_job.py:push():138] Uploaded file /tmp/tmpbkaer9ccwandb/t2x49l0a-wandb-metadata.json
+2023-03-15 00:23:59,954 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-metadata.json
+2023-03-15 00:23:59,954 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/requirements.txt
+2023-03-15 00:23:59,954 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:23:59,954 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_created():275] file/dir created: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:01,763 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:01,764 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:01,764 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:01,764 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:01,954 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:01,954 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:03,609 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:03,874 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:03,874 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:03,874 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:03,874 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:03,954 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:03,954 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:05,620 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:05,620 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:05,620 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:05,621 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:05,955 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:05,955 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:07,265 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:07,265 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:07,266 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:07,266 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:07,955 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:07,955 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:08,677 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:09,074 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:09,075 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:09,075 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:09,075 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:09,956 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:09,956 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:10,806 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:10,807 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:10,807 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:10,807 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:10,956 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:11,956 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:13,298 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:13,299 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:13,299 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:13,299 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:13,776 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:13,957 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:13,957 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:14,168 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-15 00:24:15,227 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:15,227 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:15,227 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:15,228 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:15,957 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:15,957 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:17,698 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:17,699 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:17,699 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:17,699 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:17,958 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:17,958 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:18,829 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:19,169 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-15 00:24:19,958 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:20,071 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:20,071 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:20,071 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:20,072 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:20,958 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:21,852 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:21,852 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:21,852 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:21,852 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:21,958 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:21,959 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:23,908 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:23,959 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:24,170 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-15 00:24:24,194 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:24,194 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:24,194 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:24,195 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:24,959 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:25,959 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:26,091 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:26,091 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:26,091 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:26,091 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:26,960 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:27,960 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:28,053 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:28,054 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:28,054 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:28,054 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:28,925 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:28,960 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:29,171 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-15 00:24:29,700 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:29,701 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:29,701 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:29,701 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:29,960 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/config.yaml
+2023-03-15 00:24:29,961 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:29,961 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:31,945 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:31,945 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:31,945 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:31,945 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:31,961 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:31,961 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:33,961 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:34,152 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:34,172 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-15 00:24:34,358 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:34,358 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:34,358 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:34,358 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:34,962 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:35,962 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:36,330 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:36,331 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:36,331 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:36,331 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:36,962 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:37,962 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:38,984 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:38,984 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:38,985 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:38,985 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:39,172 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-15 00:24:39,246 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:39,964 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:39,964 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:40,802 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:40,802 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:40,803 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:40,803 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:40,964 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:41,964 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:42,969 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:42,969 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:42,969 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:42,970 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:43,965 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:43,965 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:44,173 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-15 00:24:44,350 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:45,223 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:45,223 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:45,223 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:45,224 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:45,965 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:45,965 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:47,214 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:47,214 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:47,214 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:47,215 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:47,966 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:47,966 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:49,203 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: keepalive
+2023-03-15 00:24:49,425 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: status_report
+2023-03-15 00:24:49,678 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:49,679 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:49,679 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:49,679 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:49,966 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:49,966 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:51,411 DEBUG   HandlerThread:29314 [handler.py:handle_request():144] handle_request: partial_history
+2023-03-15 00:24:51,411 DEBUG   SenderThread:29314 [sender.py:send():336] send: history
+2023-03-15 00:24:51,411 DEBUG   SenderThread:29314 [sender.py:send_request():363] send_request: summary_record
+2023-03-15 00:24:51,413 INFO    SenderThread:29314 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2023-03-15 00:24:51,967 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:51,967 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/wandb-summary.json
+2023-03-15 00:24:53,059 ERROR   cpu       :29314 [interfaces.py:monitor():129] Failed to sample metric: process no longer exists (pid=29231)
+2023-03-15 00:24:53,060 ERROR   cpu       :29314 [interfaces.py:monitor():129] Failed to sample metric: process no longer exists (pid=29231)
+2023-03-15 00:24:53,062 ERROR   memory    :29314 [interfaces.py:monitor():129] Failed to sample metric: process no longer exists (pid=29231)
+2023-03-15 00:24:53,062 ERROR   memory    :29314 [interfaces.py:monitor():129] Failed to sample metric: process no longer exists (pid=29231)
+2023-03-15 00:24:53,968 INFO    Thread-37 :29314 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230315_002353-zqbapggb/files/output.log
+2023-03-15 00:24:54,053 INFO    MainThread:29314 [internal.py:handle_exit():77] Internal process exited
+2023-03-15 00:24:54,054 INFO    MainThread:29314 [internal.py:handle_exit():77] Internal process exited
+2023-03-15 00:24:54,054 INFO    MainThread:29314 [internal.py:handle_exit():77] Internal process exited

@@ -1,0 +1,12 @@
+Run model on cuda
+(1, 84, 84)
+Traceback (most recent call last):
+  File "runner.py", line 165, in <module>
+    main(args)
+  File "runner.py", line 42, in main
+    agent.create_workers(env_name)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/agent.py", line 34, in create_workers
+    self.workers.append(Worker(env_name, self.model, self.batch_size))
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/commons/worker.py", line 14, in __init__
+    if torch.cuda.is_available():
+NameError: name 'torch' is not defined

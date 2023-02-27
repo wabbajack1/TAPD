@@ -1,0 +1,56 @@
+Max Steps:   0%|          | 0/1000000 [00:00<?, ?steps/s]/tmp/ipykernel_59759/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|          | 491/1000000 [00:01<48:46, 341.53steps/s]
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+False None
+False None
+False None
+
+Max Steps:   0%|          | 1148/1000000 [00:03<47:59, 346.89steps/s]
+False None
+False None
+False None
+False None
+False None
+
+Max Steps:   0%|          | 1807/1000000 [00:05<47:20, 351.40steps/s]
+False None
+False None
+False None
+False None
+
+Max Steps:   0%|          | 2448/1000000 [00:07<50:01, 332.31steps/s]
+False None
+False None
+False None
+False None
+
+Max Steps:   0%|          | 3077/1000000 [00:09<48:45, 340.79steps/s]
+False None
+False None
+False None
+False None
+
+Max Steps:   0%|          | 3721/1000000 [00:11<49:51, 332.99steps/s]
+False None
+False None
+False None
+False None
+
+Max Steps:   0%|          | 4334/1000000 [00:13<51:14, 323.83steps/s]
+False None
+False None
+False None
+
+Max Steps:   0%|          | 4968/1000000 [00:15<57:10, 290.04steps/s]
+False None
+False None
+False None
+False None
+
+Max Steps:   1%|          | 5574/1000000 [00:17<51:53, 319.34steps/s]
+False None
+False None
+False None

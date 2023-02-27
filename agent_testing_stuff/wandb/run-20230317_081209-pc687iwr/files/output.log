@@ -1,0 +1,42 @@
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+True
+actor loss: -2.0031402111053467 - critic loss 0.5241159200668335
+True
+actor loss: -2.7742202281951904 - critic loss 0.9648224711418152
+True
+actor loss: -1.9246799945831299 - critic loss 0.6072426438331604
+Max Steps:   0%|          | 0/1000000 [00:00<?, ?steps/s]/tmp/ipykernel_4818/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+
+Max Steps:   0%|          | 997/1000000 [00:03<53:47, 309.49steps/s]
+True
+actor loss: -2.9093356132507324 - critic loss 0.9488415718078613
+True
+actor loss: -3.480048418045044 - critic loss 1.2863612174987793
+True
+actor loss: -2.4435606002807617 - critic loss 0.7802926301956177
+True
+
+Max Steps:   0%|          | 1547/1000000 [00:05<52:50, 314.93steps/s]
+True
+actor loss: -1.8023803234100342 - critic loss 0.4455074667930603
+True
+actor loss: -2.9674360752105713 - critic loss 1.0279077291488647
+True
+actor loss: -3.280694007873535 - critic loss 1.1397857666015625
+True
+actor loss: -1.017915964126587 - critic loss 0.2512456178665161
+
+Max Steps:   0%|          | 2079/1000000 [00:07<50:46, 327.60steps/s]
+actor loss: -2.106224536895752 - critic loss 0.6018425822257996
+True
+actor loss: -0.7191178798675537 - critic loss 0.10063352435827255
+True
+actor loss: 0.5074460506439209 - critic loss 0.05118313431739807
+True
+actor loss: -2.0002875328063965 - critic loss 0.5344707369804382
+
+Max Steps:   0%|          | 2079/1000000 [00:07<1:01:39, 269.76steps/s]
+actor loss: -1.8644545078277588 - critic loss 0.4512205421924591

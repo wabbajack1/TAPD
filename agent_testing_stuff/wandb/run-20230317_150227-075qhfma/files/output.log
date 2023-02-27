@@ -1,0 +1,43 @@
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+Qval <class 'float'> -0.02141442708671093 0.0 0.99
+-0.02120028281584382
+Qval <class 'float'> -0.021326251327991486 0.0 0.99
+-0.02111298881471157
+Qval <class 'float'> -0.021288909018039703 0.0 0.99
+-0.021076019927859305
+Qval <class 'float'> -0.020951829850673676 0.0 0.99
+-0.02074231155216694
+Max Steps:   0%|          | 0/5000000 [00:00<?, ?steps/s]/tmp/ipykernel_4818/711258252.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|          | 400/5000000 [00:01<5:35:04, 248.67steps/s]
+Qval <class 'float'> -0.020418185740709305 0.0 0.99
+-0.02021400388330221
+Qval <class 'float'> -0.02069355919957161 0.0 0.99
+-0.020486623607575895
+Qval <class 'float'> -0.02047051303088665 0.0 0.99
+-0.020265807900577783
+Qval <class 'float'> -0.020414147526025772 0.0 0.99
+-0.020210006050765516
+Qval <class 'float'> -0.02026205323636532 0.0 0.99
+
+Max Steps:   0%|          | 932/5000000 [00:03<5:52:54, 236.09steps/s]
+Qval <class 'float'> -0.02011769451200962 0.0 0.99
+-0.019916517566889523
+Qval <class 'float'> -0.01994979754090309 0.0 0.99
+
+Max Steps:   0%|          | 1099/5000000 [00:04<5:13:04, 266.12steps/s]
+Exception in thread SystemMonitor:
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/system_monitor.py", line 118, in _start
+    asset.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/disk.py", line 76, in start
+    self.metrics_monitor.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/interfaces.py", line 168, in start
+    logger.info(f"Started {self._process.name}")
+AttributeError: 'NoneType' object has no attribute 'name'

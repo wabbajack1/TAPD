@@ -1,0 +1,126 @@
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+False None
+actor loss: -2.005807638168335 - critic loss 0.5241815447807312
+False None
+actor loss: -2.79345440864563 - critic loss 0.9787908792495728
+False None
+actor loss: -0.9632284045219421 - critic loss 0.24706637859344482
+False None
+actor loss: -3.1997487545013428 - critic loss 1.1926926374435425
+Max Steps:   0%|          | 0/1000000 [00:00<?, ?steps/s]/tmp/ipykernel_59759/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|          | 497/1000000 [00:01<48:08, 346.07steps/s]
+False None
+actor loss: -2.283597469329834 - critic loss 0.5756750106811523
+False None
+actor loss: -2.2987453937530518 - critic loss 0.5756542682647705
+False None
+actor loss: -3.5908451080322266 - critic loss 1.3669790029525757
+False None
+actor loss: -1.6798741817474365 - critic loss 0.3800296485424042
+False None
+
+Max Steps:   0%|          | 1146/1000000 [00:03<48:21, 344.20steps/s]
+False None
+actor loss: -3.1529757976531982 - critic loss 1.1730194091796875
+False None
+actor loss: -0.4122079312801361 - critic loss 0.0766281932592392
+False None
+actor loss: -0.7231109738349915 - critic loss 0.1282416135072708
+False None
+actor loss: -3.241389036178589 - critic loss 1.2115809917449951
+False None
+
+Max Steps:   0%|          | 1820/1000000 [00:05<54:35, 304.74steps/s]
+False None
+actor loss: -1.957494854927063 - critic loss 0.5218511819839478
+False None
+actor loss: -0.0447688102722168 - critic loss 0.00023192129447124898
+False None
+actor loss: -1.0698039531707764 - critic loss 0.16985279321670532
+False None
+actor loss: -0.5500352382659912 - critic loss 0.17126215994358063
+False None
+
+Max Steps:   0%|          | 2438/1000000 [00:07<47:13, 352.07steps/s]
+False None
+actor loss: -3.1609413623809814 - critic loss 1.0473097562789917
+False None
+actor loss: -1.3897806406021118 - critic loss 0.3801509439945221
+False None
+actor loss: -2.5276753902435303 - critic loss 0.8510981798171997
+False None
+actor loss: 0.7463560700416565 - critic loss 0.13842758536338806
+False None
+
+Max Steps:   0%|          | 3109/1000000 [00:09<47:04, 352.93steps/s]
+False None
+actor loss: -2.8587255477905273 - critic loss 0.9581350684165955
+False None
+actor loss: -2.140807628631592 - critic loss 0.7013763189315796
+False None
+actor loss: -2.2807774543762207 - critic loss 0.751889705657959
+False None
+actor loss: -3.1837403774261475 - critic loss 1.0533498525619507
+False None
+
+Max Steps:   0%|          | 3748/1000000 [00:11<47:34, 349.06steps/s]
+False None
+actor loss: -2.962751626968384 - critic loss 1.0696922540664673
+False None
+actor loss: -1.5284677743911743 - critic loss 0.2916858494281769
+False None
+actor loss: -3.350998878479004 - critic loss 1.2665845155715942
+False None
+actor loss: -2.5961220264434814 - critic loss 0.7495519518852234
+False None
+
+Max Steps:   0%|          | 4394/1000000 [00:13<49:35, 334.60steps/s]
+False None
+actor loss: -2.919494390487671 - critic loss 1.047425389289856
+False None
+actor loss: -3.3208842277526855 - critic loss 1.2486785650253296
+False None
+actor loss: -2.3707144260406494 - critic loss 0.7981896996498108
+False None
+
+Max Steps:   1%|          | 5045/1000000 [00:15<48:49, 339.66steps/s]
+False None
+actor loss: -2.095618724822998 - critic loss 0.5666999220848083
+False None
+actor loss: -2.0381619930267334 - critic loss 0.6608057618141174
+False None
+actor loss: -3.030276298522949 - critic loss 1.0092309713363647
+False None
+actor loss: 0.6013424396514893 - critic loss 0.15397655963897705
+False None
+
+Max Steps:   1%|          | 5597/1000000 [00:17<51:46, 320.12steps/s]
+Exception in thread SystemMonitor:
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/system_monitor.py", line 118, in _start
+    asset.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/cpu.py", line 166, in start
+    self.metrics_monitor.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/interfaces.py", line 168, in start
+    logger.info(f"Started {self._process.name}")
+AttributeError: 'NoneType' object has no attribute 'name'
+Exception in thread SystemMonitor:
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/system_monitor.py", line 118, in _start
+    asset.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/cpu.py", line 166, in start
+    self.metrics_monitor.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/interfaces.py", line 168, in start
+    logger.info(f"Started {self._process.name}")
+AttributeError: 'NoneType' object has no attribute 'name'

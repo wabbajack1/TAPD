@@ -1,0 +1,39 @@
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+Max Steps:   0%|          | 0/1000 [00:00<?, ?steps/s]/tmp/ipykernel_22093/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/gym/utils/passive_env_checker.py:233: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+  if not isinstance(terminated, (bool, np.bool8)):
+Max Steps:  53%|█████▎    | 534/1000 [00:01<00:01, 359.90steps/s]
+==================TRAIN TASK 1======================
+Max Steps: 100%|██████████| 1000/1000 [00:02<00:00, 348.04steps/s]
+
+
+Max Steps: 100%|██████████| 1000/1000 [00:02<00:00, 352.28steps/s]
+Exception in thread SystemMonitor:
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/system_monitor.py", line 118, in _start
+    asset.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/cpu.py", line 166, in start
+    self.metrics_monitor.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/interfaces.py", line 168, in start
+    logger.info(f"Started {self._process.name}")
+AttributeError: 'NoneType' object has no attribute 'name'
+Exception in thread SystemMonitor:
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/system_monitor.py", line 118, in _start
+    asset.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/cpu.py", line 166, in start
+    self.metrics_monitor.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/interfaces.py", line 168, in start
+    logger.info(f"Started {self._process.name}")
+AttributeError: 'NoneType' object has no attribute 'name'

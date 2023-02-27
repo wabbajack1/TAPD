@@ -1,0 +1,37 @@
+Max Steps:   0%|          | 0/5000000 [00:00<?, ?steps/s]/tmp/ipykernel_4818/711258252.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|          | 441/5000000 [00:01<4:57:23, 280.19steps/s]
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+Qval [-0.00813523]
+Qval [-0.01654]
+Qval [-0.02256563]
+Qval [-0.02917037]
+Qval [-0.03290244]
+
+Max Steps:   0%|          | 964/5000000 [00:03<4:43:40, 293.71steps/s]
+Qval [-0.0433557]
+Qval [-0.04601615]
+Qval [-0.05313354]
+Qval [-0.05929626]
+
+Max Steps:   0%|          | 1532/5000000 [00:05<5:30:46, 251.86steps/s]
+Qval [-0.07218276]
+Qval [-0.07911092]
+Qval [-0.08755552]
+
+Max Steps:   0%|          | 1580/5000000 [00:05<5:01:40, 276.16steps/s]
+Exception in thread SystemMonitor:
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/system_monitor.py", line 118, in _start
+    asset.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/cpu.py", line 166, in start
+    self.metrics_monitor.start()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/internal/system/assets/interfaces.py", line 168, in start
+    logger.info(f"Started {self._process.name}")
+AttributeError: 'NoneType' object has no attribute 'name'

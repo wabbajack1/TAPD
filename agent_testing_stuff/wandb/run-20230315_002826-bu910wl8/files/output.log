@@ -1,0 +1,87 @@
+Run model on cuda
+==================TRAIN TASK 0======================
+====> Progress train task 0
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+Max Steps:   0%|                                             | 0/1000000 [00:00<?, ?steps/s]/tmp/ipykernel_30072/2492226513.py:22: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  action_pred = F.softmax(action_pred_logit)
+Max Steps:   0%|                                   | 84/1000000 [00:00<39:50, 418.37steps/s]/tmp/ipykernel_30072/1644489236.py:75: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at ../torch/csrc/utils/tensor_new.cpp:230.)
+  values = torch.FloatTensor(values).to(device)
+Max Steps:   0%|                                  | 522/1000000 [00:01<50:27, 330.18steps/s]
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+
+Max Steps:   0%|                                 | 1195/1000000 [00:03<44:39, 372.76steps/s]
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+
+Max Steps:   0%|                                 | 1883/1000000 [00:05<44:33, 373.29steps/s]
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+
+Max Steps:   0%|                                 | 2548/1000000 [00:07<47:40, 348.72steps/s]
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+
+Max Steps:   0%|                                 | 3232/1000000 [00:09<52:04, 319.03steps/s]
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+
+Max Steps:   0%|▏                                | 3889/1000000 [00:11<46:01, 360.66steps/s]
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+
+
+Max Steps:   1%|▏                                | 5192/1000000 [00:15<45:46, 362.24steps/s]
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+
+Max Steps:   1%|▏                                | 5800/1000000 [00:17<53:41, 308.60steps/s]
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+cleared graph
+
+
+Max Steps:   1%|▏                                | 6918/1000000 [00:21<50:16, 329.17steps/s]
+cleared graph
+cleared graph
+cleared graph

@@ -1,0 +1,35 @@
+2023-03-17 15:16:55,068 INFO    MainThread:4818 [wandb_setup.py:_flush():68] Configure stats pid to 4818
+2023-03-17 15:16:55,068 INFO    MainThread:4818 [wandb_setup.py:_flush():68] Loading settings from /home/kidimerek/.config/wandb/settings
+2023-03-17 15:16:55,068 INFO    MainThread:4818 [wandb_setup.py:_flush():68] Loading settings from /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/settings
+2023-03-17 15:16:55,069 INFO    MainThread:4818 [wandb_setup.py:_flush():68] Loading settings from environment variables: {'_require_service': 'True'}
+2023-03-17 15:16:55,069 INFO    MainThread:4818 [wandb_setup.py:_flush():68] Inferring run settings from compute environment: {'program': '<python with no main file>'}
+2023-03-17 15:16:55,069 INFO    MainThread:4818 [wandb_init.py:_log_setup():492] Logging user logs to /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_151655-ifqts1kg/logs/debug.log
+2023-03-17 15:16:55,069 INFO    MainThread:4818 [wandb_init.py:_log_setup():493] Logging internal logs to /home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/agent/wandb/run-20230317_151655-ifqts1kg/logs/debug-internal.log
+2023-03-17 15:16:55,069 INFO    MainThread:4818 [wandb_init.py:init():532] calling init triggers
+2023-03-17 15:16:55,069 INFO    MainThread:4818 [wandb_init.py:init():538] wandb.init called with sweep_config: {}
+config: {}
+2023-03-17 15:16:55,069 INFO    MainThread:4818 [wandb_init.py:init():588] starting backend
+2023-03-17 15:16:55,069 INFO    MainThread:4818 [wandb_init.py:init():592] setting up manager
+2023-03-17 15:16:55,072 INFO    MainThread:4818 [backend.py:_multiprocessing_setup():106] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2023-03-17 15:16:55,076 INFO    MainThread:4818 [wandb_init.py:init():599] backend started and connected
+2023-03-17 15:16:55,080 INFO    MainThread:4818 [wandb_run.py:_label_probe_notebook():1203] probe notebook
+2023-03-17 15:16:55,080 INFO    MainThread:4818 [wandb_run.py:_label_probe_notebook():1213] Unable to probe notebook: 'NoneType' object has no attribute 'get'
+2023-03-17 15:16:55,080 INFO    MainThread:4818 [wandb_init.py:init():687] updated telemetry
+2023-03-17 15:16:55,131 INFO    MainThread:4818 [wandb_init.py:init():727] communicating run to backend with 60.0 second timeout
+2023-03-17 15:17:11,978 WARNING MainThread:4818 [wandb_init.py:init():1154] interrupted
+Traceback (most recent call last):
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/wandb_init.py", line 1133, in init
+    run = wi.init()
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/wandb_init.py", line 730, in init
+    result = run_init_handle.wait(
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/lib/mailbox.py", line 273, in wait
+    found, abandoned = self._slot._get_and_clear(timeout=wait_timeout)
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/lib/mailbox.py", line 120, in _get_and_clear
+    if self._wait(timeout=timeout):
+  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/wandb/sdk/lib/mailbox.py", line 116, in _wait
+    return self._event.wait(timeout=timeout)
+  File "/usr/lib/python3.9/threading.py", line 574, in wait
+    signaled = self._cond.wait(timeout)
+  File "/usr/lib/python3.9/threading.py", line 316, in wait
+    gotit = waiter.acquire(True, timeout)
+KeyboardInterrupt

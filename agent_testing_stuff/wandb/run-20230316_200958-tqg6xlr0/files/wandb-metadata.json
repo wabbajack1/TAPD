@@ -1,0 +1,64 @@
+{
+    "os": "Linux-5.13.0-52-generic-x86_64-with-glibc2.34",
+    "python": "3.9.7",
+    "heartbeatAt": "2023-03-16T19:10:03.511181",
+    "startedAt": "2023-03-16T19:09:58.009307",
+    "docker": null,
+    "cuda": null,
+    "args": null,
+    "state": "running",
+    "program": "<python with no main file>",
+    "git": {
+        "remote": null,
+        "commit": "1e9a547267c88ec34a07e3048fc6d3762644e022"
+    },
+    "email": "kidim4444@gmail.com",
+    "root": "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main",
+    "host": "Kidim10",
+    "username": "kidimerek",
+    "executable": "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/bin/python",
+    "cpu_count": 4,
+    "cpu_count_logical": 4,
+    "cpu_freq": {
+        "current": 3100.0025,
+        "min": 800.0,
+        "max": 4200.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3600.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 3600.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 3600.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 1600.01,
+            "min": 800.0,
+            "max": 4200.0
+        }
+    ],
+    "disk": {
+        "total": 227.67544174194336,
+        "used": 123.40356063842773
+    },
+    "gpu": "NVIDIA GeForce GTX 1660 SUPER",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce GTX 1660 SUPER",
+            "memory_total": 6232014848
+        }
+    ],
+    "memory": {
+        "total": 15.565906524658203
+    }
+}

@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "runner.py", line 161, in <module>
+    main(args)
+  File "runner.py", line 26, in main
+    env_dict = {0: env, #  pong
+UnboundLocalError: local variable 'env' referenced before assignment
