@@ -1,6 +1,6 @@
 import torch
 
-<<<<<<< HEAD
+
 class Model(torch.nn.Module):
     def __init__(self, action_space, env):
         super(Model, self).__init__()
@@ -54,7 +54,7 @@ class Model(torch.nn.Module):
         
         chosen_action = dist.sample()
         return chosen_action.item()
-=======
+
 import torch
 import torch.nn as nn
 
