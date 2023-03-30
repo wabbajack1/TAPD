@@ -247,6 +247,11 @@ class Active_Module(nn.Module):
 
 
 class Adaptor(nn.Module):
+    """_summary_
+
+    Args:
+        nn (_type_): _description_
+    """
     def __init__(self):
         super(Adaptor, self).__init__()
         self.conv1_adaptor = nn.Conv2d(1, 32, kernel_size=1)
