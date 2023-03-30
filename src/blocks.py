@@ -1,5 +1,5 @@
 import torch.nn as nn
-from ProgNetAbstract import ProgBlock
+from commons.ProgNetAbstract import ProgBlock
 import torch
 
 """
@@ -62,7 +62,6 @@ class ProgDenseBlock(ProgBlock):
         
         # choose the index of the lateral, i-th lateral is the connection from the i-th column
         lat = self.laterals[i]
-        print("input is shape", x.shape)
         return lat(x)
 
     def runActivation(self, x):
@@ -128,7 +127,7 @@ class MultiProgDenseBlock(ProgBlock):
                 
         lat1 = self.laterals1[i]
         lat2 = self.laterals2[i]
-        print("---->", lat1(x).shape, lat2(x).shape, x.shape)
+        #print("->", lat1(x).shape, lat2(x).shape)
         return lat1(x), lat2(x)
 
     def runActivation(self, x):

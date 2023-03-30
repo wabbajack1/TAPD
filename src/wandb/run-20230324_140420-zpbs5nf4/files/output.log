@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "runner.py", line 156, in <module>
-    main(args)
-  File "runner.py", line 33, in main
-    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env)
-  File "/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/src/agent.py", line 13, in __init__
-    self.env_name = env_name
-NameError: name 'env_name' is not defined

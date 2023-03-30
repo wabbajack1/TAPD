@@ -21,13 +21,15 @@ class Worker(object):
         self.env = common.wrappers.make_atari(env_name)
         self.env = common.wrappers.wrap_deepmind(self.env, scale=True)
         self.env = common.wrappers.wrap_pytorch(self.env)
+
         self.episode_reward = 0
         self.state = self.FloatTensor(self.env.reset())
         self.model = model
         self.batch_size = batch_size
         self.gamma = gamma
 
-        data = {
+
+        self.data = {
             'episode_rewards': []
         }
         
@@ -50,8 +52,10 @@ class Worker(object):
             
             if done:
                 self.state = self.FloatTensor(self.env.reset())
-                data['episode_rewards'].append(self.episode_reward)
-                wandb.log({"score": np.mean(data['episode_rewards'][-100:])})
+                self.data['episode_rewards'].append(self.episode_reward)
+                avg_score = np.mean(self.data['episode_rewards'][-100:])
+                print(f"Average Score: {avg_score}")
+                wandb.log({"Score": avg_score}, commit=False)
                 self.episode_reward = 0
             else:
                 self.state = self.FloatTensor(next_state)

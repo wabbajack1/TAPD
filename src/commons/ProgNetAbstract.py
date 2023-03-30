@@ -1,5 +1,6 @@
 import torch.nn as nn
 from copy import deepcopy
+import torch 
 
 ############# Column Generator ##############
 """
@@ -155,7 +156,7 @@ class ProgNet(nn.Module):
             raise ValueError(f"No column with ID {str(id)} found.")
         colToOutput = self.colMap[id] # set the index of the output column
         for i, col in enumerate(self.columns):
-            print(f"\ncol {i} forward")
+            #print(f"\ncol {i} forward")
             y = col(x)
             if i == colToOutput: # check if the net is the output column
                 return y
@@ -171,6 +172,22 @@ class ProgNet(nn.Module):
     
     def network_reset(self, id):
         self.getColumn(id).apply(self.weight_reset)
+
+    def evaluate_action(self, id, state, action):
+        actor_features, value = self.forward(id, state)
+        dist = torch.distributions.Categorical(actor_features)
+        
+        log_probs = dist.log_prob(action).view(-1, 1)
+        entropy = dist.entropy().mean()
+        
+        return value, log_probs, entropy
+    
+    def act(self, id, state):
+        actor_features, value = self.forward(id, state)
+        dist = torch.distributions.Categorical(actor_features)
+        
+        chosen_action = dist.sample()
+        return chosen_action.item()
 
 ############# Column i.e. a NN #############
 """
@@ -232,6 +249,7 @@ class ProgColumn(nn.Module):
                 if block.mutliOutputBlock == True:
                     y = block.runActivation(ac)
                     value = block.runActivation(val)
+                    print("mult", value)
                 else:
                     y = block.runActivation(currOutput)
 

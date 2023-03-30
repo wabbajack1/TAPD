@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "runner.py", line 162, in <module>
-    main(args)
-  File "runner.py", line 33, in main
-    env = common.wrappers.make_atari(env_name)
-NameError: name 'common' is not defined

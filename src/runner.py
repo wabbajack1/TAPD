@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import agent
 import gym
 import wandb
@@ -31,9 +33,9 @@ def main(args):
     env = environment_wrapper(environments[0])
     
     # init the agent for later use
-    agent = Agent(use_cuda, lr, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env)
+    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env)
 
-    agent.create_workers(env_name)
+    agent.create_workers(environments[0])
     agent.progress_training(max_frames)
 
     # start progress and compress algo
@@ -49,7 +51,6 @@ def environment_wrapper(env_name):
     Returns:
         env object: return the preprocessed env (MDP problem)
     """
-    env = gym.make(env_name)
     env = common.wrappers.make_atari(env_name)
     env = common.wrappers.wrap_deepmind(env, scale=True)
     env = common.wrappers.wrap_pytorch(env)
@@ -59,32 +60,46 @@ def environment_wrapper(env_name):
 def progress_and_compress(agent, environments, max_frames, evaluation_interval):
     for env_name in environments:
         print(f"Training on {env_name}")
-
-        # Reinitialize workers for the new environment
-        agent.reinitialize_workers(env_name)
+        stop_value = env_name # current env name
 
         # progress activity
         for frame_idx in range(0, max_frames, evaluation_interval):
             agent.progress_training(evaluation_interval)
-            evaluation_score = evaluate(agent, env)
-            print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
-            wandb.log({f"evaluation_score_{env_name}": evaluation_score})
+
+            for env_name_eval in environments:
+                evaluation_score = evaluate(agent.active_model, env_name_eval)
+                print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
+                wandb.log({f"evaluation_score_{env_name_eval}": evaluation_score})
         
-        # Compress the knowledge here
-        # ...
+        # Compress the knowledge
+        for frame_idx in range(0, max_frames, evaluation_interval):
+            output_list = [environments[i] for i in range(environments.index(stop_value))]
+
+            # go through all previosly env for ewc calculation
+            for running_env in output_list:
+                env = environment_wrapper(running_env)
+                agent.compress_training(evaluation_interval, env)
+            
+            for env_name_eval in environments:
+                evaluation_score = evaluate(agent.kb_model, env_name_eval)
+                print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
+                wandb.log({f"evaluation_score_{env_name_eval}": evaluation_score})
+
+        # Reinitialize workers for the new environment
+        agent.reinitialize_workers(env_name)
 
     print("Training completed.")
 
     # Evaluate the agent's performance on each environment again after training on all environments
     for env_name in environments:
-        env = environment_wrapper(env_name)
-        evaluation_score = evaluate(agent, env)
+        evaluation_score = evaluate(agent, env_name)
         print(f"Final evaluation score on {env_name}: {evaluation_score}")
 
     return agent
 
-def evaluate(agent, env, num_episodes=10):
+def evaluate(model, env, num_episodes=10):
     evaluation_scores = []
+    env = environment_wrapper(env_name=env_name)
 
     for _ in range(num_episodes):
         state = env.reset()
@@ -93,7 +108,7 @@ def evaluate(agent, env, num_episodes=10):
 
         while not done:
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
-            action = agent.model.act(state_tensor)
+            action = model.act(state_tensor)
             next_state, reward, done, _ = env.step(action)
             episode_reward += reward
             state = next_state
@@ -187,7 +202,7 @@ if __name__ == "__main__":
         "-lr",
         "--learning_rate",
         type=float,
-        default=0.0003,
+        default=0.0007,
         help="Learning rate")
 
     parser.add_argument(
@@ -215,7 +230,7 @@ if __name__ == "__main__":
         "-w",
         "--workers",
         type=int,
-        default=5,
+        default=4,
         help="number of workers for running env")
     
     args = parser.parse_args()

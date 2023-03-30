@@ -2,7 +2,6 @@ from ProgNetAbstract import ProgColumnGenerator
 from blocks import ProgDenseBlock, ProgConv2DBlock, MultiProgDenseBlock
 from ProgNetAbstract import ProgNet, ProgColumn, ProgBlock
 import torch
-import gym
 from EWC import EWC
 import torch.nn.functional as F
 from torch.distributions import Categorical
@@ -10,15 +9,8 @@ import numpy as np
 from copy import deepcopy
 import torch.nn as nn
 
-# Define Tasks as dict
-tasks = {}
-env1 = gym.make("CartPole-v0")
-tasks["CartPole"] = env1
-
 # hyper params
 hidden_size = 512
-num_inputs = env1.observation_space.shape[0]
-num_outputs = env1.action_space.n
 
 
 class Actor(ProgColumnGenerator):
@@ -70,6 +62,60 @@ class Critic(ProgColumnGenerator):
         b4 = ProgDenseBlock(3136, 200, numLaterals=len(parentCols) , activation=None, after_conv=True)
         b5 = ProgDenseBlock(200, 1, numLaterals=len(parentCols) , activation=None)
         column = ProgColumn(self.__genID(), [b1, b2, b3, b4, b5], parentCols = parentCols)
+        return column
+
+    def __genID(self):
+        ids = self.ids
+        self.ids += 1
+        return ids
+
+class ActorCritic(ProgColumnGenerator):
+    def __init__(self):
+        self.ids = 0
+
+    """def generateColumn(self, parentCols, msg = None):
+        b1 = ProgDenseBlock(28*28, 400, 0)
+        b2 = ProgDenseBlock(400, 400, len(parentCols))
+        b3 = ProgDenseBlock(400, 10, len(parentCols), activation=None)
+        column = ProgColumn(self.__genID(), [b1, b2, b3], parentCols = parentCols)
+        return column"""
+    def generateColumn(self, parentCols):
+        params_b1 = {"stride": 4}
+        params_b2 = {"stride": 2}
+        params_b3 = {"stride": 1}
+
+        b1 = ProgConv2DBlock(1, 32, kernelSize=8,numLaterals=0, layerArgs=params_b1)
+        b2 = ProgConv2DBlock(32, 64, kernelSize=4, numLaterals=len(parentCols), layerArgs=params_b2)
+        b3 = ProgConv2DBlock(64, 64, kernelSize=3, numLaterals=len(parentCols), layerArgs=params_b3)
+        b4 = ProgDenseBlock(3136, 200, numLaterals=len(parentCols), after_conv=True)
+        b5 = MultiProgDenseBlock(200, 10, numLaterals=len(parentCols))
+        column = ProgColumn(self.__genID(), [b1, b2, b3, b4, b5], parentCols = parentCols)
+        return column
+
+    def __genID(self):
+        ids = self.ids
+        self.ids += 1
+        return ids
+
+class ActorCritic2(ProgColumnGenerator):
+    def __init__(self):
+        self.ids = 0
+
+    """def generateColumn(self, parentCols, msg = None):
+        b1 = ProgDenseBlock(28*28, 400, 0)
+        b2 = ProgDenseBlock(400, 400, len(parentCols))
+        b3 = ProgDenseBlock(400, 10, len(parentCols), activation=None)
+        column = ProgColumn(self.__genID(), [b1, b2, b3], parentCols = parentCols)
+        return column"""
+    def generateColumn(self, parentCols):
+        params_b1 = {"stride": 4}
+        params_b2 = {"stride": 2}
+        params_b3 = {"stride": 1}
+
+        b1 = ProgDenseBlock(500, 200, numLaterals=len(parentCols))
+        b2 = ProgDenseBlock(200, 100, numLaterals=len(parentCols))
+        b3 = MultiProgDenseBlock(100, 10, numLaterals=len(parentCols))
+        column = ProgColumn(self.__genID(), [b1, b2, b3], parentCols = parentCols)
         return column
 
     def __genID(self):
@@ -146,7 +192,7 @@ class CNN(nn.Module):
 
 if __name__ == "__main__":
 
-    # create nets
+    """# create nets
     actor = ProgNet(colGen = Actor())
     critic = ProgNet(colGen = Critic())
 
@@ -160,48 +206,59 @@ if __name__ == "__main__":
 
     # register parameters
     optimizer_actor = torch.optim.SGD(actor.parameters(), lr=0.8, momentum=0.9)
-    optimizer_critic = torch.optim.SGD(critic.parameters(), lr=0.8, momentum=0.9)
+    optimizer_critic = torch.optim.SGD(critic.parameters(), lr=0.8, momentum=0.9)"""
+
+    net = ProgNet(colGen = ActorCritic())
+    net1 = net.addColumn()
+    net2 = net.addColumn()
+
+    optimizer_ac = torch.optim.SGD(net.parameters(), lr=0.8, momentum=0.9)
     loss = torch.nn.MSELoss()
     
     ################# training protocol #################
-    actor.train()
-    critic.train()
+    #actor.train()
+    #critic.train()
+    net.train()
 
     print("============= before update =============")
 
-    """print("============= actor  =============")
-    for name, param in actor.state_dict().items():
+    print("============= before  =============")
+    for name, param in net.state_dict().items():
         #print(name, param.size(), param.requires_grad)
         if name == "columns.0.blocks.0.module.weight":
             prev_param_actor = deepcopy(param)
             print(name, param.size(), param.grad, param.grad_fn, "\n")
     
-    print("============= critic =============")
+    """print("============= critic =============")
     for name, param in critic.state_dict().items():
         #print(name, param.size(), param.requires_grad)
         if name == "columns.0.blocks.0.module.weight":
             prev_param_critic = deepcopy(param)
             print(name, param.size(), param.grad, param.grad_fn, "\n")"""
     # training loop
-    for i in range(1000_000):
-        optimizer_actor.zero_grad()
+    for i in range(1):
+        """optimizer_actor.zero_grad()
         optimizer_critic.zero_grad()
         actor.cuda()
-        critic.cuda()
+        critic.cuda()"""
 
-        x = torch.randn((200, 4, 84, 84))
-        x = x.cuda()
-        target1 = torch.randn((200, 10)).cuda()
-        target2 = torch.randn((200, 1)).cuda()
-        ac = actor(net1_actor, x)
-        val = critic(net1_critic, x)
-        diff1_actor = loss(ac, target1)
-        diff2_critic = loss(val, target2)
-        diff = diff1_actor + diff2_critic
+        x = torch.randn(7, 1, 84, 84)
+        #x = x.cuda()
+        target1 = torch.randn((7, 10))
+        target2 = torch.randn((7, 1))
+        #ac = actor(net1_actor, x)
+        #val = critic(net1_critic, x)
+        #ac, val = net(net2, x)
+        z, u = net(net2, x)
+        print(f"z {z.shape}, u {u.shape}")
+        diff1_actor = loss(z, target1)
+        diff2_actor = loss(u, target2)
+        #diff2_critic = loss(val, target2)
+        diff = diff1_actor + diff2_actor
         #actor.freezeColumn(net1_actor)
         #critic.freezeColumn(net1_critic)
         diff.backward()
-        
+        #make_dot(diff, params=dict(net.named_parameters())).view()
         """print("============= gradients  =============")
 
         print("============= actor =============")
@@ -214,10 +271,16 @@ if __name__ == "__main__":
             if param.requires_grad:
                 print(f"-> gradient {param.grad is not None} -- {name} -- {param.size()}")"""
 
-        print(diff)
+        for name, param in net.named_parameters():
+            if param.requires_grad:
+                print(f"-> gradient {param.grad is not None} -- {name} -- {param.size()}")
 
-        optimizer_actor.step()
-        optimizer_critic.step()
+        print(diff1_actor)
+
+        """optimizer_actor.step()
+        optimizer_critic.step()"""
+        optimizer_ac.step()
+        optimizer_ac.zero_grad()
     
     """
     print("============= after update =============")

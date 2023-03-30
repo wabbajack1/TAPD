@@ -5,11 +5,11 @@ class Memory(object):
         self.states, self.actions, self.true_values = [], [], []
 
         if torch.cuda.is_available():
-            FloatTensor = torch.cuda.FloatTensor
-            LongTensor = torch.cuda.LongTensor
+            self.FloatTensor = torch.cuda.FloatTensor
+            self.LongTensor = torch.cuda.LongTensor
         else:
-            FloatTensor = torch.FloatTensor
-            LongTensor = torch.LongTensor
+            self.FloatTensor = torch.FloatTensor
+            self.LongTensor = torch.LongTensor
     
     def push(self, state, action, true_value):
         self.states.append(state)
@@ -18,8 +18,8 @@ class Memory(object):
     
     def pop_all(self):
         states = torch.stack(self.states)
-        actions = LongTensor(self.actions)
-        true_values = FloatTensor(self.true_values).unsqueeze(1)
+        actions = self.LongTensor(self.actions)
+        true_values = self.FloatTensor(self.true_values).unsqueeze(1)
         
         self.states, self.actions, self.true_values = [], [], []
         
