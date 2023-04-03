@@ -61,5 +61,5 @@ class EWC(object):
     def penalty(self, ewc_lambda, model: nn.Module):
         loss = 0
         for n, p in model.named_parameters():
-            loss += (self.precision_matrices[n] * (p - self.mean_params[n]) ** 2).sum()
+            loss += (self.fisher[n] * (p - self.mean_params[n]) ** 2).sum()
         return loss * ewc_lambda

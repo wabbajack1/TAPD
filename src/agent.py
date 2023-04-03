@@ -4,6 +4,9 @@ from commons.memory.memory import Memory
 import torch
 import wandb
 from commons.EWC import EWC
+from commons.memory.CustomDataset import CustomDataset
+from torch.utils.data.dataloader import DataLoader
+import numpy as np
 
 class Agent:
     def __init__(self, use_cuda, lr, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env):
@@ -28,8 +31,8 @@ class Agent:
         self.progNet = ProgressiveNet(self.kb_model, self.active_model)
 
         # seperate optimizers because freezing method quit does not work, thererfore update only required nets
-        self.active_optimizer = torch.optim.RMSprop(self.active_model.parameters(), lr=self.lr, eps=1e-5)
-        self.kb_optimizer = torch.optim.RMSprop(self.kb_model.parameters(), lr=self.lr, eps=1e-5)
+        self.active_optimizer = torch.optim.RMSprop(self.active_model.parameters(), lr=self.lr, eps=0.1)
+        self.kb_optimizer = torch.optim.RMSprop(self.kb_model.parameters(), lr=self.lr, eps=0.1)
 
 
     def create_workers(self, env_name):
@@ -56,12 +59,13 @@ class Agent:
     def progress(self):
         states, actions, true_values = self.memory.pop_all()
         dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         
         values_list = []
         
         for batch_states, batch_actions, batch_true_values in dataloader:
-            values, log_probs, entropy = self.progNet.evaluate_action(batch_states, batch_actions)
+            print(batch_states.shape, batch_actions.shape, batch_true_values.shape)
+            values, log_probs, entropy = self.progNet.evaluate_action(batch_states, batch_actions) # inference of active column via kb column
 
             values = torch.squeeze(values)
             log_probs = torch.squeeze(log_probs)
@@ -76,7 +80,7 @@ class Agent:
 
             self.active_optimizer.zero_grad()
             total_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.active_model.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(self.active_model.parameters(), 1)
             self.active_optimizer.step()
             
             values_list.append(values)
@@ -88,17 +92,20 @@ class Agent:
         criterion = torch.nn.KLDivLoss()
         ewc_lambda = 1000
 
-        if self.ewc_flag:
-            ewc_loss = EWC(env, self.kb_model).penalty(ewc_lambda, self.kb_model)
-        else:
-            ewc_loss = 0
-
         states, actions, true_values = self.memory.pop_all()
         dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
         total_kl_loss = 0
         for batch_states, batch_actions, _ in dataloader:
+            
+            # calc ewc loss after every update
+            if self.ewc_flag:
+                ewc_loss = EWC(env, self.kb_model).penalty(ewc_lambda, self.kb_model)
+            else:
+                ewc_loss = 0
+            
+            # calc infernce for loss calc
             _, log_probs_active, _ = self.active_model.evaluate_action(batch_states, batch_actions)
             _, log_probs_kb, _ = self.kb_model.evaluate_action(batch_states, batch_actions)
 
@@ -107,7 +114,7 @@ class Agent:
             self.active_optimizer.zero_grad()
             self.kb_optimizer.zero_grad()
             kl_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.kb_optimizer.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(self.kb_optimizer.parameters(), 1)
             self.kb_optimizer.step()
 
             total_kl_loss += kl_loss.item()
@@ -131,7 +138,7 @@ class Agent:
                 
             value = self.progress()  # Changed 'reflect(memory)' to 'self.reflect()'
             data.append(value)
-            wandb.log({"Critic value": np.mean(data['values'][-100:])})
+            #wandb.log({"Critic value": np.mean(data[-100:])})
 
     def compress_training(self, max_frames, env):
         frame_idx = 0

@@ -287,13 +287,19 @@ class ProgressiveNet(nn.Module):
         self.model_a = model_a
         self.model_b = model_b
 
-        wandb.watch(self, log_freq=1, log="all")
+        #wandb.watch(self, log_freq=1, log="all")
 
     def forward(self, x):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)
         critic_output_model_b, actor_output_model_b = self.model_b(x, [x1, x2, x3, x4])
         return critic_output_model_b, actor_output_model_b, critic_output_model_a, actor_output_model_a
-
+    
+    def get_critic(self, x):
+        with torch.no_grad():
+            ritic_output_model_b, _, _, _ = self.forward(x)
+            
+        return ritic_output_model_b
+    
     def check_calculated_gradient(self):
         skip1 = True
         skip2 = True

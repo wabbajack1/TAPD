@@ -54,7 +54,7 @@ class Worker(object):
                 self.state = self.FloatTensor(self.env.reset())
                 self.data['episode_rewards'].append(self.episode_reward)
                 print(f"Average Score: {np.mean(self.data['episode_rewards'][-100:])}")
-                wandb.log({"Score": np.mean(self.data['episode_rewards'][-100:])}, commit=False)
+                #wandb.log({"Score": np.mean(self.data['episode_rewards'][-100:])}, commit=False)
                 self.episode_reward = 0
             else:
                 self.state = self.FloatTensor(next_state)
