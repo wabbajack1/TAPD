@@ -210,16 +210,12 @@ class Active_Module(nn.Module):
 
             critic_x1 = self.critic[0:2](x4) + y4
             actor_x1 = self.actor[0:2](x4) + y5
-
-            print("with lat")
         else:
             x2 = self.layer2(x1)
             x3 = self.layer3(x2)
             x4 = x3.view(x3.size(0), -1)
             critic_x1 = self.critic[0:2](x4)
             actor_x1 = self.actor[0:2](x4)
-            
-            print("without lat")
 
         critic_output = self.critic[-1:](critic_x1)
         actor_output = self.actor[-2:](actor_x1)
@@ -287,7 +283,7 @@ class ProgressiveNet(nn.Module):
         self.model_a = model_a
         self.model_b = model_b
 
-        #wandb.watch(self, log_freq=1, log="all")
+        wandb.watch(self, log_freq=1, log="all")
 
     def forward(self, x):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)

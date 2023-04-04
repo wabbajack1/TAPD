@@ -64,7 +64,6 @@ class Agent:
         values_list = []
         
         for batch_states, batch_actions, batch_true_values in dataloader:
-            print(batch_states.shape, batch_actions.shape, batch_true_values.shape)
             values, log_probs, entropy = self.progNet.evaluate_action(batch_states, batch_actions) # inference of active column via kb column
 
             values = torch.squeeze(values)
@@ -138,7 +137,7 @@ class Agent:
                 
             value = self.progress()  # Changed 'reflect(memory)' to 'self.reflect()'
             data.append(value)
-            #wandb.log({"Critic value": np.mean(data[-100:])})
+            wandb.log({"Critic value": np.mean(data[-100:])})
 
     def compress_training(self, max_frames, env):
         frame_idx = 0

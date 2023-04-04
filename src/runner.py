@@ -13,20 +13,20 @@ import common.wrappers
 
 def main(args):
     
-    """wandb.init(
+    wandb.init(
         # set the wandb project where this run will be logged
         project="test_run_pong",
         entity="agnostic",
         config=args
-    )"""
-    print(args)
-    max_frames = args.max_frames
-    batch_size = args.batch_size
-    learning_rate = args.learning_rate
-    gamma = args.gamma
-    entropy_coef = args.entropy_coef
-    critic_coef = args.critic_coef
-    no_of_workers = args.workers
+    )
+    
+    max_frames = wandb.config["max_frames"]
+    batch_size = wandb.config["batch_size"]
+    learning_rate = wandb.config["learning_rate"]
+    gamma = wandb.config["gamma"]
+    entropy_coef = wandb.config["entropy_coef"]
+    critic_coef = wandb.config["critic_coef"]
+    no_of_workers = wandb.config["workers"]
 
 
     environments = ['PongNoFrameskip-v4', 'BreakoutNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
