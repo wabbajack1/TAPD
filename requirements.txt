@@ -36,7 +36,6 @@ distro==1.5.0
 distro-info==1.0
 dnspython==1.16.0
 docker-pycreds==0.4.0
-duplicity==0.8.20
 entrypoints==0.4
 executing==1.2.0
 fasteners==0.18
@@ -180,6 +179,5 @@ wcwidth==0.2.5
 webencodings==0.5.1
 Werkzeug==2.0.3
 widgetsnbextension==3.5.2
-wxPython==4.0.7
 xdg==5
 zipp==3.15.0
