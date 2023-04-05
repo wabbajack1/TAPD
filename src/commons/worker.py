@@ -1,6 +1,5 @@
-import sys
-sys.path.append("/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/")
-
+#import sys
+#sys.path.append("/export/home/9erekmen/infhome/Documents/mynewproj/venv2/lib/python3.8/site-packages/")
 import common.wrappers
 import numpy as np
 import wandb
@@ -11,7 +10,9 @@ class Worker(object):
     rollouts. The worker only collects and does not update the self.models.
     """
 
-    def __init__(self, env_name, model, batch_size, gamma):
+    def __init__(self, env_name, model, batch_size, gamma, device):
+
+        self.device = device
 
         if torch.cuda.is_available():
             self.FloatTensor = torch.cuda.FloatTensor
@@ -23,7 +24,7 @@ class Worker(object):
         self.env = common.wrappers.wrap_pytorch(self.env)
 
         self.episode_reward = 0
-        self.state = self.FloatTensor(self.env.reset())
+        self.state = self.FloatTensor(self.env.reset()).to(self.device)
         self.model = model
         self.batch_size = batch_size
         self.gamma = gamma
@@ -51,13 +52,13 @@ class Worker(object):
             dones.append(done)
             
             if done:
-                self.state = self.FloatTensor(self.env.reset())
+                self.state = self.FloatTensor(self.env.reset()).to(self.device)
                 self.data['episode_rewards'].append(self.episode_reward)
                 print(f"Average Score: {np.mean(self.data['episode_rewards'][-100:])}")
                 wandb.log({"Score": np.mean(self.data['episode_rewards'][-100:])}, commit=False)
                 self.episode_reward = 0
             else:
-                self.state = self.FloatTensor(next_state)
+                self.state = self.FloatTensor(next_state).to(self.device)
                 
         values = self._compute_true_values(states, rewards, dones).unsqueeze(1)
         return states, actions, values
@@ -76,14 +77,16 @@ class Worker(object):
             R: discounted return
         """
         R = []
-        rewards = self.FloatTensor(rewards)
-        dones = self.FloatTensor(dones)
-        states = torch.stack(states)
-        
+        rewards = self.FloatTensor(rewards).to(self.device)
+        dones = self.FloatTensor(dones).to(self.device)
+        states = torch.stack(states).to(self.device)
+
+        print(f"rewards {rewards.shape}, states {states.shape}, dones {dones.shape}")
         if dones[-1] == True:
             next_value = rewards[-1]
         else:
             next_value = self.model.get_critic(states[-1].unsqueeze(0))
+            
             
         R.append(next_value)
         for i in reversed(range(0, len(rewards) - 1)):

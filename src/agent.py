@@ -21,14 +21,14 @@ class Agent:
         self.num_actions = env.action_space.n
         self.ewc_flag = False
 
-        self.device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:3" if use_cuda and torch.cuda.is_available() else "cpu")
         if self.device.type == 'cuda':
             print(f"Run model on cuda\n")
 
         # init active and kb column
         self.active_model = Active_Module(self.device, env, lateral_connections=False).to(self.device)
         self.kb_model = KB_Module(self.device, env).to(self.device)
-        self.progNet = ProgressiveNet(self.kb_model, self.active_model)
+        self.progNet = ProgressiveNet(self.kb_model, self.active_model).to(self.device)
 
         # seperate optimizers because freezing method quit does not work, thererfore update only required nets
         self.active_optimizer = torch.optim.RMSprop(self.active_model.parameters(), lr=self.lr, eps=0.1)
@@ -45,7 +45,7 @@ class Agent:
             list: list of workers 
         """
         for _ in range(self.no_of_workers):
-            self.workers.append(Worker(env_name, self.progNet, self.batch_size, self.gamma))
+            self.workers.append(Worker(env_name, self.progNet, self.batch_size, self.gamma, self.device))
         
         return self.workers
 
@@ -54,7 +54,7 @@ class Agent:
         self.ewc_flag = True
         self.workers = []
         for _ in range(self.no_of_workers):
-            self.workers.append(Worker(env_name, self.progNet, self.batch_size, self.gamma))
+            self.workers.append(Worker(env_name, self.progNet, self.batch_size, self.gamma, self.device))
 
     def progress(self):
         states, actions, true_values = self.memory.pop_all()
@@ -64,6 +64,11 @@ class Agent:
         values_list = []
         
         for batch_states, batch_actions, batch_true_values in dataloader:
+            batch_states = batch_states.to(self.device)
+            batch_actions = batch_actions.to(self.device)
+            batch_true_values = batch_true_values.to(self.device)
+            #print(f"batch_states on {batch_states.shape}, batch_actions on {batch_actions.shape}, batch_true_values on {batch_true_values.shape}\n")
+            
             values, log_probs, entropy = self.progNet.evaluate_action(batch_states, batch_actions) # inference of active column via kb column
 
             values = torch.squeeze(values)
