@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import agent
 import gym
 import wandb
@@ -10,6 +8,8 @@ from agent import Agent
 import sys
 sys.path.append("/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/")
 import common.wrappers
+import datetime
+from pathlib import Path
 
 def main(args):
     
@@ -19,7 +19,9 @@ def main(args):
         entity="agnostic",
         config=args
     )
-    
+    save_dir = Path("checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    save_dir.mkdir(parents=True)
+
     max_frames = wandb.config["max_frames"]
     batch_size = wandb.config["batch_size"]
     learning_rate = wandb.config["learning_rate"]
@@ -27,13 +29,13 @@ def main(args):
     entropy_coef = wandb.config["entropy_coef"]
     critic_coef = wandb.config["critic_coef"]
     no_of_workers = wandb.config["workers"]
-
+    eps = wandb.config["epsilon"]
 
     environments = ['PongNoFrameskip-v4', 'BreakoutNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
     env = environment_wrapper(environments[0])
     
     # init the agent for later use
-    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env)
+    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env, eps, save_dir, wandb)
 
     agent.create_workers(environments[0])
     agent.progress_training(max_frames)
@@ -212,6 +214,13 @@ if __name__ == "__main__":
         default=0.99,
         help="gamma discount value")
     
+    parser.add_argument(
+        "-eps",
+        "--epsilon",
+        type=float,
+        default=0.00001,
+        help="epsilin decay for rms optimizer")
+
     parser.add_argument(
         "-ent",
         "--entropy_coef",

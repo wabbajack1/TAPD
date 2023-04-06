@@ -98,4 +98,4 @@ class Worker(object):
             
         R.reverse()
         
-        return self.FloatTensor(R)
+        return self.FloatTensor(R).to(self.device)

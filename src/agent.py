@@ -7,32 +7,36 @@ from commons.EWC import EWC
 from commons.memory.CustomDataset import CustomDataset
 from torch.utils.data.dataloader import DataLoader
 import numpy as np
+import multiprocessing as mp
+
 
 class Agent:
-    def __init__(self, use_cuda, lr, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env):
+    def __init__(self, use_cuda, lr, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env, eps, save_dir, wandb):
         self.lr = lr
         self.gamma = gamma
         self.entropy_coef = entropy_coef
         self.critic_coef = critic_coef
         self.no_of_workers = no_of_workers
         self.workers = []
-        self.memory = Memory()
         self.batch_size = batch_size
         self.num_actions = env.action_space.n
         self.ewc_flag = False
+        self.save_dir = save_dir
+        self.wandb = wandb
 
-        self.device = torch.device("cuda:3" if use_cuda and torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:4" if use_cuda and torch.cuda.is_available() else "cpu")
         if self.device.type == 'cuda':
-            print(f"Run model on cuda\n")
+            print(f"\n=========== Run model on cuda ===========\n")
 
-        # init active and kb column
+        # init active, kb nets and memory
+        self.memory = Memory(self.device)
         self.active_model = Active_Module(self.device, env, lateral_connections=False).to(self.device)
         self.kb_model = KB_Module(self.device, env).to(self.device)
         self.progNet = ProgressiveNet(self.kb_model, self.active_model).to(self.device)
 
         # seperate optimizers because freezing method quit does not work, thererfore update only required nets
-        self.active_optimizer = torch.optim.RMSprop(self.active_model.parameters(), lr=self.lr, eps=0.1)
-        self.kb_optimizer = torch.optim.RMSprop(self.kb_model.parameters(), lr=self.lr, eps=0.1)
+        self.active_optimizer = torch.optim.RMSprop(self.active_model.parameters(), lr=self.lr, eps=eps)
+        self.kb_optimizer = torch.optim.RMSprop(self.kb_model.parameters(), lr=self.lr, eps=eps)
 
 
     def create_workers(self, env_name):
@@ -46,7 +50,9 @@ class Agent:
         """
         for _ in range(self.no_of_workers):
             self.workers.append(Worker(env_name, self.progNet, self.batch_size, self.gamma, self.device))
-        
+
+        print("Workers created")
+
         return self.workers
 
     def reinitialize_workers(self, env_name):
@@ -59,14 +65,14 @@ class Agent:
     def progress(self):
         states, actions, true_values = self.memory.pop_all()
         dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         
         values_list = []
         
         for batch_states, batch_actions, batch_true_values in dataloader:
-            batch_states = batch_states.to(self.device)
-            batch_actions = batch_actions.to(self.device)
-            batch_true_values = batch_true_values.to(self.device)
+            #batch_states = batch_states.to(self.device)
+            #batch_actions = batch_actions.to(self.device)
+            #batch_true_values = batch_true_values.to(self.device)
             #print(f"batch_states on {batch_states.shape}, batch_actions on {batch_actions.shape}, batch_true_values on {batch_true_values.shape}\n")
             
             values, log_probs, entropy = self.progNet.evaluate_action(batch_states, batch_actions) # inference of active column via kb column
@@ -98,7 +104,7 @@ class Agent:
 
         states, actions, true_values = self.memory.pop_all()
         dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
 
         total_kl_loss = 0
         for batch_states, batch_actions, _ in dataloader:
@@ -129,8 +135,10 @@ class Agent:
     def progress_training(self, max_frames):
         frame_idx = 0
         data = []
+        updates = 0
+
         while frame_idx < max_frames:
-            for worker in self.workers:
+            for j, worker in enumerate(self.workers):
                 states, actions, true_values = worker.get_batch()
                 for i, _ in enumerate(states):
                     self.memory.push(
@@ -140,16 +148,26 @@ class Agent:
                     )
                 frame_idx += self.batch_size
                 
-            value = self.progress()  # Changed 'reflect(memory)' to 'self.reflect()'
+            value = self.progress()
             data.append(value)
             wandb.log({"Critic value": np.mean(data[-100:])})
+            updates += 1
+
+            print(f"Updated {updates} times\n")
+
+            # save active model weights and optimizer status every 100_000 frames
+            if (frame_idx+1) % 100000 == 0:
+                self.save_active(frame_idx)
 
     def compress_training(self, max_frames, env):
         frame_idx = 0
 
         while frame_idx < max_frames:
-            for worker in self.workers:
+            for j, worker in enumerate(self.workers):
                 states, actions, true_values = worker.get_batch()
+                
+                print(f"Got batch {j}\n")
+
                 for i, _ in enumerate(states):
                     self.memory.push(
                         states[i],
@@ -159,3 +177,8 @@ class Agent:
                 frame_idx += self.batch_size
             
             self.compress(env)
+
+    def save_active(self, step):
+        save_path = (self.save_dir / f"active_model_{int(step)}.chkpt")
+        torch.save(dict(model=self.active_model.state_dict(), optimizer=self.active_optimizer.state_dict(), **self.wandb.config),save_path)
+        print(f"Active net saved to {save_path}")
