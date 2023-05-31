@@ -142,6 +142,13 @@ class KB_Module(nn.Module):
         for param in self.parameters():
             param.requires_grad = False
 
+    def unfreeze_parameters(self):
+        """
+        Freeze all parameters of the model, so they won't be updated during backpropagation.
+        """
+        for param in self.parameters():
+            param.requires_grad = True
+
 
 
 class Active_Module(nn.Module):
@@ -190,6 +197,27 @@ class Active_Module(nn.Module):
         self.adaptor = Adaptor(feature_size) # init adaptor layers like in prognet
 
 
+    def reinit_parameters(self, seed=None):
+        """
+        Reinitialize the parameters of the model. If a seed is given, use it to generate a deterministic initialization.
+
+        :param seed: Seed for the random number generator
+        """
+        if seed is not None:
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            # When running on the CuDNN backend, two further options must be set
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+
+        for layer in [self.layer1, self.layer2, self.layer3, self.critic, self.actor]:
+            if hasattr(layer, 'reset_parameters'):
+                layer.reset_parameters()
+            else:
+                for sublayer in layer:
+                    if hasattr(sublayer, 'reset_parameters'):
+                        sublayer.reset_parameters()
+            
     def forward(self, x, previous_out_layers=None):
 
         """
@@ -264,6 +292,13 @@ class Active_Module(nn.Module):
         """
         for param in self.parameters():
             param.requires_grad = False
+
+    def unfreeze_parameters(self):
+        """
+        Freeze all parameters of the model, so they won't be updated during backpropagation.
+        """
+        for param in self.parameters():
+            param.requires_grad = True
 
 
 class Adaptor(nn.Module):

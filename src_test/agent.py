@@ -187,6 +187,8 @@ class Agent:
         updates = 0
         last_saved_frame_idx = 0
         self.active_model.train()
+        self.kb_model.freeze_parameters()
+        self.active_model.unfreeze_parameters()  
 
         while frame_idx < max_frames:
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
@@ -219,8 +221,10 @@ class Agent:
         last_saved_frame_idx = 0
         data_value_kb = []
         data_value_ac = []
+        self.kb_model.train()  
+        self.active_model.freeze_parameters()
+        self.kb_model.unfreeze_parameters()  
         
-        self.kb_model.train()    
         while frame_idx < max_frames:
             
             # collect training data

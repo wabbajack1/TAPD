@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../venv/lib/python3.10/site-packages/")
+sys.path.append("../venv/lib/python3.9/site-packages/")
 import agent
 import gym
 import wandb
@@ -20,6 +20,7 @@ import os
 # os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
 # os.environ['CUDA_VISIBLE_DEVICES']='1'
 os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
+
 
 
 print(f"Torch version: {torch.__version__}")
@@ -44,7 +45,7 @@ def main(args):
         project="run_pandc_atari",
         entity="agnostic",
         config=args,
-        mode="disabled",
+        #mode="disabled",
         #id="nd07r8xn",
         #resume="allow"
     )
@@ -73,7 +74,7 @@ def main(args):
     #################################################################################
 
     ###################### start progress and compress algo #########################
-    trained_agent = progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate)
+    trained_agent = progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate, seed=wandb.config["seed"])
     
         
 
@@ -96,7 +97,7 @@ def environment_wrapper(save_dir, env_name, video_record=False):
 
     return env
 
-def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_interval):
+def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_interval, seed):
     
     # load agent if required crash and continue training
     if agent.load_active(100_000) and agent.resume:
@@ -118,6 +119,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
         if agent.resume != True: # check if run chrashed if yes resume the state of training before crash
             for frame_idx in range(0, max_frames_progress, evaluation_interval):
                 print(f"############## Progress phase - to Frame: {frame_idx + evaluation_interval}")
+                agent.active_model.reinit_parameters(seed)
                 agent.progress_training(evaluation_interval)
                 
                 #evaluate the perforamance of the agent after the training
@@ -125,6 +127,11 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
                     print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
                     wandb.log({f"Evaluation score;{env_name_eval};{agent.progNet.model_b.__class__.__name__}": evaluation_score})
+
+                for env_name_eval in environments:
+                    evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
+                    print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
+                    wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
 
         
         
@@ -135,7 +142,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
         # init the first computation of the fisher, i.e. because later we compute only the running average
         if agent.ewc_init and len(task_list) > 0:
             # take the latest env and calculate the fisher
-            ewc = EWC(task_list[-1], agent.kb_model, ewc_gamma=0.80, device=agent.device)
+            ewc = EWC(task_list[-1], agent.kb_model, ewc_gamma=0.99, device=agent.device)
             agent.ewc_init = False
             
         for frame_idx in range(0, max_frames_compress, evaluation_interval):
@@ -178,7 +185,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
 
 def evaluate(model, env, device, save_dir, num_episodes=10):
     env = environment_wrapper(save_dir, env_name=env, video_record=False)
-    print(f"Evaluate: {env.spec.id}")
+    print(f"Evaluate: {env.spec.id} with model {model.__class__.__name__}")
     
     evaluation_scores = []
     for _ in range(num_episodes):
