@@ -1,7 +1,8 @@
 import torch
 import wandb
+import torch.nn as nn
 
-class Model(torch.nn.Module):
+class Model(nn.Module):
     def __init__(self, action_space, env):
         super(Model, self).__init__()
         self.features = torch.nn.Sequential(
@@ -54,13 +55,11 @@ class Model(torch.nn.Module):
         
         chosen_action = dist.sample()
         return chosen_action.item()
-
-import torch
-import torch.nn as nn
-
+    
 class KB_Module(nn.Module):
-    def __init__(self, device, env):
+    def __init__(self, device):
         super(KB_Module, self).__init__()
+        self.device = device
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=8, stride=4),
@@ -75,7 +74,7 @@ class KB_Module(nn.Module):
             nn.ReLU()
         )
 
-        feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *env.observation_space.shape)))).to(device).view(1, -1).size(1)
+        feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *(1, 84, 84))))).to(device).view(1, -1).size(1)
 
         self.critic = nn.Sequential(
             nn.Linear(feature_size, 512),
@@ -86,7 +85,7 @@ class KB_Module(nn.Module):
         self.actor = nn.Sequential(
             nn.Linear(feature_size, 512),
             nn.ReLU(),
-            nn.Linear(512, env.action_space.n),
+            nn.Linear(512, 18),
             nn.Softmax(dim=-1)
         )
 
@@ -95,14 +94,18 @@ class KB_Module(nn.Module):
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
         x4 = x3.view(x3.size(0), -1)
-        
-        critic_x1 = x4
-        actor_x1 = x4
 
-        critic_output = self.critic(critic_x1)
-        actor_output = self.actor(actor_x1)
+        critic_output = self.critic(x4)
+        actor_output = self.actor(x4)
 
         return x1, x2, x3, x4, critic_output, actor_output
+
+    def act(self, state):
+        _, _, _, _, critic_output, actor_features = self.forward(state.to(self.device))
+        dist = torch.distributions.Categorical(actor_features)
+        
+        chosen_action = dist.sample()
+        return chosen_action.item()
 
     def get_critic(self, x):
         """
@@ -123,11 +126,12 @@ class KB_Module(nn.Module):
         :param action: action tensor
         :return: value, log_probs, entropy tensors
         """
-        value, actor_features, _, _, _ = self.forward(state)
+        _, _, _, _, value, actor_features = self.forward(state.to(self.device))
         dist = torch.distributions.Categorical(actor_features)
 
         log_probs = dist.log_prob(action).view(-1, 1)
         entropy = dist.entropy().mean()
+        # print("Shape", log_probs.shape, entropy.shape, value.shape)
 
         return value, log_probs, entropy
 
@@ -141,7 +145,7 @@ class KB_Module(nn.Module):
 
 
 class Active_Module(nn.Module):
-    def __init__(self, device, env, lateral_connections=False):
+    def __init__(self, device, lateral_connections:bool()=False):
         """
         Initialize the Module2 class.
 
@@ -150,9 +154,10 @@ class Active_Module(nn.Module):
         :param lateral_connections: flag to enable or disable lateral connections (default: True)
         """
         super(Active_Module, self).__init__()
-
         # Define feature layers with lateral connections
         self.lateral_connections = lateral_connections
+        self.device = device
+
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=8, stride=4),
@@ -167,7 +172,7 @@ class Active_Module(nn.Module):
             nn.ReLU()
         )
 
-        feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *env.observation_space.shape)))).to(device).view(1, -1).size(1)
+        feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *(1, 84, 84))))).to(device).view(1, -1).size(1)
 
         self.critic = nn.Sequential(
             nn.Linear(feature_size, 512),
@@ -178,12 +183,12 @@ class Active_Module(nn.Module):
         self.actor = nn.Sequential(
             nn.Linear(feature_size, 512),
             nn.ReLU(),
-            nn.Linear(512, env.action_space.n),
+            nn.Linear(512, 18),
             nn.Softmax(dim=-1)
         )
+        
+        self.adaptor = Adaptor(feature_size) # init adaptor layers like in prognet
 
-        if self.lateral_connections:
-            self.adaptor = Adaptor(feature_size)
 
     def forward(self, x, previous_out_layers=None):
 
@@ -228,6 +233,13 @@ class Active_Module(nn.Module):
             critic_output, _ = self.forward(x)
         
         return critic_output
+
+    def act(self, state):
+        value, actor_features = self.forward(state.to(self.device))
+        dist = torch.distributions.Categorical(actor_features)
+        
+        chosen_action = dist.sample()
+        return chosen_action.item()
 
     def evaluate_action(self, state, action, *lateral_outputs):
         """
@@ -277,17 +289,48 @@ class Adaptor(nn.Module):
         return y1, y2, y3, y4, y5
 
 
+class ICM(nn.Module):
+    def __init__(self, state_dim, action_dim, forward_hidden_dim):
+        super(ICM, self).__init__()
+
+        self.forward_model = nn.Sequential(
+            nn.Linear(state_dim + action_dim, forward_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(forward_hidden_dim, state_dim),
+        )
+
+    def forward(self, state, action):
+        # Forward model
+        action_one_hot = F.one_hot(action, num_classes=predicted_action.shape[-1])
+        state_action = torch.cat([state, action_one_hot], dim=-1)
+        predicted_next_state = self.forward_model(state_action)
+
+        return predicted_next_state
+
 class ProgressiveNet(nn.Module):
     def __init__(self, model_a, model_b):
         super(ProgressiveNet, self).__init__()
         self.model_a = model_a
         self.model_b = model_b
-
+        #self.icm = ICM(state_dim, action_dim, forward_hidden_dim)
+        self.icm = None
+        
         wandb.watch(self, log_freq=1, log="all")
 
-    def forward(self, x):
+    def forward(self, x, action=None):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)
         critic_output_model_b, actor_output_model_b = self.model_b(x, [x1, x2, x3, x4])
+        
+        if action is not None:
+            predicted_next_state = self.icm(x, action)
+            return (
+                critic_output_model_b,
+                actor_output_model_b,
+                critic_output_model_a,
+                actor_output_model_a,
+                predicted_next_state
+            )
+
         return critic_output_model_b, actor_output_model_b, critic_output_model_a, actor_output_model_a
     
     def get_critic(self, x):

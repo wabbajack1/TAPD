@@ -1,3 +1,5 @@
+import sys
+sys.path.append("../venv/lib/python3.10/site-packages/")
 import agent
 import gym
 import wandb
@@ -5,24 +7,52 @@ import argparse
 import torch
 import numpy as np
 from agent import Agent
-import sys
-sys.path.append("/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/lib/python3.9/site-packages/")
 import common.wrappers
 import datetime
 from pathlib import Path
+import torch.multiprocessing as mp
+from commons.model import Active_Module
+import random
+from gym.wrappers.monitoring.video_recorder import VideoRecorder
+
+import os 
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
+os.environ['CUDA_VISIBLE_DEVICES']='1'
+os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
+
+
+print(f"Torch version: {torch.__version__}")
+
+def set_seed(seed: int = 44) -> None:
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    # When running on the CuDNN backend, two further options must be set
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # Set a fixed value for the hash seed
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    print(f"Random seed set as {seed}\n")
+
 
 def main(args):
     
     wandb.init(
         # set the wandb project where this run will be logged
-        project="test_run_pong",
+        project="run_pong",
         entity="agnostic",
-        config=args
+        config=args,
+        mode="disabled",
+        id="nd07r8xn",
+        resume="allow"
     )
-    save_dir = Path("checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    
+    environments = ['PongNoFrameskip-v4', 'HeroNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
+    save_dir = Path("../checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     save_dir.mkdir(parents=True)
-
-    max_frames = wandb.config["max_frames"]
+    max_frames_progress = wandb.config["max_frames_progress"]
+    max_frames_compress = wandb.config["max_frames_compress"]
     batch_size = wandb.config["batch_size"]
     learning_rate = wandb.config["learning_rate"]
     gamma = wandb.config["gamma"]
@@ -30,21 +60,23 @@ def main(args):
     critic_coef = wandb.config["critic_coef"]
     no_of_workers = wandb.config["workers"]
     eps = wandb.config["epsilon"]
-
-    environments = ['PongNoFrameskip-v4', 'BreakoutNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
-    env = environment_wrapper(environments[0])
+    evaluate = wandb.config["evaluate"]
+    set_seed(wandb.config["seed"])
     
-    # init the agent for later use
-    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, env, eps, save_dir, wandb)
+    # create agent
+    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume=True)
+    
+    ############### RUN ONLY ACTIVE COLUMN AND ONE TASK (FOR TESTING) ###############
+    '''agent.create_worker_parallel(environments[0])
+    agent.progress_training(max_frames)'''
+    #################################################################################
 
-    agent.create_workers(environments[0])
-    agent.progress_training(max_frames)
+    ###################### start progress and compress algo #########################
+    trained_agent = progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate)
+    
+        
 
-    # start progress and compress algo
-    #trained_agent = progress_and_compress(agent, environments, max_frames, evaluation_interval)
-
-
-def environment_wrapper(env_name):
+def environment_wrapper(save_dir, env_name, video_record=False):
     """Preprocesses the environment based on the wrappers
 
     Args:
@@ -53,56 +85,92 @@ def environment_wrapper(env_name):
     Returns:
         env object: return the preprocessed env (MDP problem)
     """
-    env = common.wrappers.make_atari(env_name)
+
+    path = (save_dir / "video" / "vid.mp4")
+
+    env = common.wrappers.make_atari(env_name, full_action_space=True)
+    if video_record:
+        path = (save_dir / "video" / "vid.mp4")
+        env = VideoRecorder(env, path)
     env = common.wrappers.wrap_deepmind(env, scale=True)
     env = common.wrappers.wrap_pytorch(env)
 
     return env
 
-def progress_and_compress(agent, environments, max_frames, evaluation_interval):
-    for env_name in environments:
-        print(f"Training on {env_name}")
-        stop_value = env_name # current env name
-
-        # progress activity
-        for frame_idx in range(0, max_frames, evaluation_interval):
-            agent.progress_training(evaluation_interval)
-
-            for env_name_eval in environments:
-                evaluation_score = evaluate(agent.active_model, env_name_eval)
-                print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
-                wandb.log({f"evaluation_score_{env_name_eval}": evaluation_score})
+def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_interval):
+    
+    # load agent if required crash and continue training
+    if agent.load_active(100_000) and agent.resume:
+        print("Load successful!")
+    else:
+        print("Load unsuccessful!")
+    
+    for env_name in environments:        
+    
+        # Reinitialize workers for the new environment
+        print("############## Creating workers ##############")
+        agent.reinitialize_workers(env_name)
         
-        # Compress the knowledge
-        for frame_idx in range(0, max_frames, evaluation_interval):
-            output_list = [environments[i] for i in range(environments.index(stop_value))]
-
-            # go through all previosly env for ewc calculation
-            for running_env in output_list:
-                env = environment_wrapper(running_env)
-                agent.compress_training(evaluation_interval, env)
+        print(f"############## Training on {env_name} ##############")
+        stop_value = env_name # current env name (in continual learning setup its a task)
+        
+        
+        
+        ############## progress activity ##############        
+        if agent.resume != True: # check if run chrashed if yes resume the state of training before crash
+            for frame_idx in range(0, max_frames_progress, evaluation_interval):
+                print(f"############## Progress phase - to Frame: {frame_idx + evaluation_interval}")
+                
+                agent.progress_training(evaluation_interval)
+                #evaluate the perforamance of the agent after the training
+                for env_name_eval in environments:
+                    evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
+                    print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
+                    wandb.log({f"{agent.kb_model.__class__.__name__}_evaluation_score_{env_name_eval}": evaluation_score})
+        
+        
+        ############## compress activity ##############
+        print(f"############## Compress phase with EWC.{agent.ewc_flag}")
+        task_list = [environment_wrapper(save_dir=save_dir, env_name=environments[i], video_record=False) for i in range(environments.index(stop_value))] # list for ewc calculation for considerering the previous tasks
+        for frame_idx in range(0, max_frames_compress, evaluation_interval):
+            print(f"############## Compress phase - to Frame: {frame_idx + evaluation_interval}")
+            
+            if agent.ewc_flag == False:
+                print("Distillation")
+                agent.compress_training(evaluation_interval, None)
+            else:
+                # go through all previosly env for ewc calculation
+                print("Distillation + EWC")
+                agent.compress_training(evaluation_interval, task_list)
             
             for env_name_eval in environments:
-                evaluation_score = evaluate(agent.kb_model, env_name_eval)
+                evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
                 print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
-                wandb.log({f"evaluation_score_{env_name_eval}": evaluation_score})
-
-        # Reinitialize workers for the new environment
-        agent.reinitialize_workers(env_name)
-
-    print("Training completed.")
+                wandb.log({f"{agent.kb_model.__class__.__name__}_evaluation_score_{env_name_eval}": evaluation_score})
+        
+        agent.ewc_flag = True
+        #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
+        agent.active_model.lateral_connections = True
+        agent.resume = False
+        
+        print("\n ############################## \n")
+    
+    print("Training completed.\n")
 
     # Evaluate the agent's performance on each environment again after training on all environments
     for env_name in environments:
-        evaluation_score = evaluate(agent, env_name)
-        print(f"Final evaluation score on {env_name}: {evaluation_score}")
+        evaluation_score = evaluate(agent.progNet, env_name, agent.device, save_dir=save_dir)
+        print(f"Evaluation score after training on {env_name}: {evaluation_score}")
+        
+    print("Evaluation completed.\n")
 
     return agent
 
-def evaluate(model, env, num_episodes=10):
+def evaluate(model, env, device, save_dir, num_episodes=10):
+    env = environment_wrapper(save_dir, env_name=env, video_record=False)
+    print(f"Evaluate: {env.spec.id}")
+    
     evaluation_scores = []
-    env = environment_wrapper(env_name=env_name)
-
     for _ in range(num_episodes):
         state = env.reset()
         done = False
@@ -110,7 +178,7 @@ def evaluate(model, env, num_episodes=10):
 
         while not done:
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
-            action = model.act(state_tensor)
+            action = model.act(state_tensor.to(device))
             next_state, reward, done, _ = env.step(action)
             episode_reward += reward
             state = next_state
@@ -194,11 +262,18 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
-        "-mf",
-        "--max_frames",
+        "-mfp",
+        "--max_frames_progress",
         type=int,
         default=1000_000,
-        help="Number of frames")
+        help="Number of frames for progress phase")
+    
+    parser.add_argument(
+        "-mfc",
+        "--max_frames_compress",
+        type=int,
+        default=1000_000,
+        help="Number of frames for compress phase (expected to be smaller number than mfp)")
 
     parser.add_argument(
         "-lr",
@@ -241,6 +316,22 @@ if __name__ == "__main__":
         type=int,
         default=4,
         help="number of workers for running env")
+
+    parser.add_argument(
+        "-s",
+        "--seed",
+        type=int,
+        default=44,
+        help="seed number")
+    
+    parser.add_argument(
+        "-eval",
+        "--evaluate",
+        type=int,
+        default=100000,
+        help="Run test after #-frames")
     
     args = parser.parse_args()
+    #mp.set_start_method('forkserver')
     main(args)
+

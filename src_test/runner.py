@@ -17,8 +17,8 @@ from gym.wrappers.monitoring.video_recorder import VideoRecorder
 from commons.EWC import EWC
 
 import os 
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
-os.environ['CUDA_VISIBLE_DEVICES']='1'
+# os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
+# os.environ['CUDA_VISIBLE_DEVICES']='1'
 os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
 
 
@@ -44,7 +44,7 @@ def main(args):
         project="run_pandc_atari",
         entity="agnostic",
         config=args,
-        #mode="disabled",
+        mode="disabled",
         #id="nd07r8xn",
         #resume="allow"
     )
