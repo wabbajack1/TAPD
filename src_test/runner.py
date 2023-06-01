@@ -50,7 +50,7 @@ def main(args):
         #resume="allow"
     )
     
-    environments = ['PongNoFrameskip-v4', 'StarGunnerNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
+    environments = ['StarGunnerNoFrameskip-v4', 'PongNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
     save_dir = Path("../checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     save_dir.mkdir(parents=True)
     max_frames_progress = wandb.config["max_frames_progress"]
@@ -62,11 +62,11 @@ def main(args):
     critic_coef = wandb.config["critic_coef"]
     no_of_workers = wandb.config["workers"]
     eps = wandb.config["epsilon"]
-    evaluate = wandb.config["evaluate"]
+    evaluate_nmb = wandb.config["evaluate"]
     set_seed(wandb.config["seed"])
     
     # create agent
-    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume=True)
+    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume=False)
     
     ############### RUN ONLY ACTIVE COLUMN AND ONE TASK (FOR TESTING) ###############
     '''agent.create_worker_parallel(environments[0])
@@ -74,9 +74,10 @@ def main(args):
     #################################################################################
 
     ###################### start progress and compress algo #########################
-    trained_agent = progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate, seed=wandb.config["seed"])
-    
-        
+    trained_agent = progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate_nmb, seed=wandb.config["seed"])
+    #print(evaluate(agent.progNet, "StarGunnerNoFrameskip-v4", agent.device, None, num_episodes=10))
+    #agent.active_model.reinit_parameters(wandb.config["seed"])
+    #print(evaluate(agent.progNet, "StarGunnerNoFrameskip-v4", agent.device, None, num_episodes=10))
 
 def environment_wrapper(save_dir, env_name, video_record=False):
     """Preprocesses the environment based on the wrappers
@@ -92,9 +93,8 @@ def environment_wrapper(save_dir, env_name, video_record=False):
     if video_record:
         path = (save_dir / "video" / "vid.mp4")
         env = VideoRecorder(env, path)
-    env = common.wrappers.wrap_deepmind(env, scale=True)
-    env = common.wrappers.wrap_pytorch(env)
-
+    env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True)
+    env = common.wrappers.wrap_pytorch(env) 
     return env
 
 def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_interval, seed):
@@ -125,13 +125,13 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                 #evaluate the perforamance of the agent after the training
                 for env_name_eval in environments:
                     evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
-                    print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
-                    wandb.log({f"Evaluation score;{env_name_eval};{agent.progNet.model_b.__class__.__name__}": evaluation_score})
+                    print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score[1]}")
+                    wandb.log({f"Evaluation score;{env_name_eval};{agent.progNet.model_b.__class__.__name__}": evaluation_score[1]})
 
                 for env_name_eval in environments:
                     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                    print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
-                    wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
+                    print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score[1]}")
+                    wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
 
         
         
@@ -158,8 +158,8 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                 
             for env_name_eval in environments:
                 evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score}")
-                wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
+                print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score[1]}")
+                wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
         
         #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
         # After learning each task, update EWC
@@ -188,21 +188,25 @@ def evaluate(model, env, device, save_dir, num_episodes=10):
     print(f"Evaluate: {env.spec.id} with model {model.__class__.__name__}")
     
     evaluation_scores = []
+    evaluation_scores_original = []
     for _ in range(num_episodes):
         state = env.reset()
         done = False
         episode_reward = 0
+        episode_reward_orignal = 0
 
         while not done:
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
             action = model.act(state_tensor.to(device))
-            next_state, reward, done, _ = env.step(action)
-            episode_reward += reward
+            next_state, reward, done = env.step(action)
+            episode_reward += reward[0]
+            episode_reward_orignal += reward[1]
             state = next_state
 
         evaluation_scores.append(episode_reward)
+        evaluation_scores_original.append(episode_reward_orignal)
 
-    return np.mean(evaluation_scores)
+    return np.mean(evaluation_scores), np.mean(evaluation_scores_original)
 
 def train_PC(env_dict, max_frames, agent):
     "Train all 5 taks using PNN"

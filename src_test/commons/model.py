@@ -1,6 +1,9 @@
 import torch
 import wandb
 import torch.nn as nn
+import os
+import numpy as np
+import random
 
 class Model(nn.Module):
     def __init__(self, action_space, env):
@@ -204,19 +207,28 @@ class Active_Module(nn.Module):
         :param seed: Seed for the random number generator
         """
         if seed is not None:
+            np.random.seed(seed)
+            random.seed(seed)
             torch.manual_seed(seed)
             torch.cuda.manual_seed(seed)
             # When running on the CuDNN backend, two further options must be set
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
+            # Set a fixed value for the hash seed
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            print(f"Random seed set as {seed}\n")
+
+        def reset_module_parameters(module):
+            if hasattr(module, 'reset_parameters'):
+                module.reset_parameters()
+            elif isinstance(module, nn.ModuleList) or isinstance(module, nn.Sequential):
+                for sub_module in module:
+                    reset_module_parameters(sub_module)
+            else:
+                print("Warning: Encountered a layer without reset_parameters method: ", module)
 
         for layer in [self.layer1, self.layer2, self.layer3, self.critic, self.actor]:
-            if hasattr(layer, 'reset_parameters'):
-                layer.reset_parameters()
-            else:
-                for sublayer in layer:
-                    if hasattr(sublayer, 'reset_parameters'):
-                        sublayer.reset_parameters()
+            reset_module_parameters(layer)
             
     def forward(self, x, previous_out_layers=None):
 
@@ -408,7 +420,6 @@ class ProgressiveNet(nn.Module):
     def act(self, state):
         value, actor_features, _, _ = self.forward(state)
         dist = torch.distributions.Categorical(actor_features)
-        
         chosen_action = dist.sample()
         return chosen_action.item()
 

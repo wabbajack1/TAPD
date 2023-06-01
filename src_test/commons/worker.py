@@ -17,7 +17,7 @@ class Worker(object):
 
         self.FloatTensor = torch.FloatTensor
         env = common.wrappers.make_atari(env_name, full_action_space=True)
-        env = common.wrappers.wrap_deepmind(env, scale=True)
+        env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True)
         env = common.wrappers.wrap_pytorch(env)
         
         self.env_dict = {}
@@ -42,6 +42,7 @@ class Worker(object):
         self.episode_reward = {}
         self.episode_reward["Progress"] = 0
         self.episode_reward["Compress"] = 0
+        self.episode_reward_orginal = 0
         
     def get_batch(self, mode:str="Progress"):
         """Collect rollout for the dataloader
@@ -54,22 +55,24 @@ class Worker(object):
             
             # the kb column should watch the active column play
             action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
-            next_state, reward, done, _ = self.env_dict[mode].step(action)
-            self.episode_reward[mode] += reward
+            next_state, reward, done = self.env_dict[mode].step(action)
+            self.episode_reward[mode] += reward[0]
+            self.episode_reward_orginal += reward[1]
             
             states.append(self.state[mode])
             actions.append(action)
-            rewards.append(reward)
+            rewards.append(reward[0])
             dones.append(done)
             
             
             if done:
                 self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device)
-                self.data[mode].append(self.episode_reward[mode])
+                self.data[mode].append(self.episode_reward_orginal)
                 
                 print(f"Mode {mode}: Worker {self.id} in episode {len(self.data[mode])} Average Score: {np.mean(self.data[mode][-100:])}")
                 wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:])}, commit=False)
                 self.episode_reward[mode] = 0
+                self.episode_reward_orginal = 0
             else:
                 self.state[mode] = self.FloatTensor(next_state).to(self.device)
                 

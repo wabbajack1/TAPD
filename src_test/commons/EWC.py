@@ -50,9 +50,9 @@ class EWC(object):
             # Calculate gradients
             self.model.zero_grad()
             
-            action = self.model.act(state.unsqueeze(0))
+            action = self.model.act(state.unsqueeze(0).to(self.device))
             next_state, reward, done, _ = self.task.step(action)
-            value, log_probs, entropy = self.model.evaluate_action(state.unsqueeze(0), torch.tensor(action))
+            value, log_probs, entropy = self.model.evaluate_action(state.unsqueeze(0).to(self.device), torch.tensor(action).to(self.device))
 
             loss = -log_probs * entropy
             loss.backward() # calc the gradients and store it in grad
