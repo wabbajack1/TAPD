@@ -43,7 +43,7 @@ def main(args):
         project="run_pandc_atari",
         entity="agnostic",
         config=args,
-        #mode="disabled",
+        mode="disabled",
         #id="nd07r8xn",
         #resume="allow"
     )
@@ -74,6 +74,12 @@ def main(args):
     #################################################################################
 
     ###################### start progress and compress algo #########################
+    # load agent if required crash and continue training
+    if agent.load_active(100_000) and agent.resume:
+        print("Load successful!")
+    else:
+        print("Load unsuccessful!")
+
     trained_agent = progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate_nmb, seed=wandb.config["seed"])
     # initial_state_dict = copy.deepcopy(agent.progNet.model_b.state_dict())
     # print(evaluate(agent.progNet.model_b, "StarGunnerNoFrameskip-v4", agent.device, None, num_episodes=10))
@@ -110,12 +116,6 @@ def environment_wrapper(save_dir, env_name, video_record=False):
 
 def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_interval, seed):
     
-    # load agent if required crash and continue training
-    if agent.load_active(100_000) and agent.resume:
-        print("Load successful!")
-    else:
-        print("Load unsuccessful!")
-    
     for env_name in environments:        
     
         # Reinitialize workers for the new environment
@@ -131,19 +131,15 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                 print(f"############## Progress phase - to Frame: {frame_idx + evaluation_interval}")
                 agent.progress_training(evaluation_interval)
                 
-                #evaluate the perforamance of the agent after the training
+                # evaluate the perforamance of the agent after the training
                 for env_name_eval in environments:
                     evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
                     print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score[1]}")
                     wandb.log({f"Evaluation score;{env_name_eval};{agent.progNet.model_b.__class__.__name__}": evaluation_score[1]})
 
-                # for env_name_eval in environments:
-                #     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                #     print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score[1]}")
-                #     wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
+        
+        print(f"############## NEXT PHASE ##############")
 
-        
-        
         ############## compress activity ##############
         print(f"############## Compress phase with EWC.task-{env_name}")
         task_list = [environment_wrapper(save_dir=save_dir, env_name=environments[i], video_record=False) for i in range(environments.index(stop_value))] # list for ewc calculation for considerering the previous tasks
@@ -151,9 +147,10 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
         # init the first computation of the fisher, i.e. because later we compute only the running average
         if agent.ewc_init and len(task_list) > 0:
             # take the latest env and calculate the fisher
-            ewc = EWC(task_list[-1], agent.kb_model, ewc_gamma=0.99, device=agent.device)
+            agent.kb_model.unfreeze_parameters()
+            ewc = EWC(task=task_list[-1], model=agent.kb_model, num_samples=10000, ewc_gamma=0.99, device=agent.device)
             agent.ewc_init = False
-            
+
         for frame_idx in range(0, max_frames_compress, evaluation_interval):
             print(f"############## Compress phase - to Frame: {frame_idx + evaluation_interval}")
             
@@ -171,11 +168,11 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                 wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
         
         #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
-        # After learning each task, update EWC
-        latest_env = environment_wrapper(save_dir=save_dir, env_name=env_name, video_record=False)
         agent.active_model.lateral_connections = True
         agent.resume = False                
         
+        # After learning each task, update EWC
+        latest_env = environment_wrapper(save_dir=save_dir, env_name=env_name, video_record=False)
         if agent.ewc_init == False:
             ewc.update(agent.kb_model, latest_env) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
         
