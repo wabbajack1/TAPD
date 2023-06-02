@@ -50,7 +50,7 @@ class Agent:
         self.inc_kb = 0
 
         self.device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
-        print(torch.cuda.is_available(), use_cuda)
+        print(f"Cuda available: {torch.cuda.is_available()}, Set to: {use_cuda}")
         if self.device.type == 'cuda':
             print(f"\n=========== Run model on cuda ===========\n")
 
@@ -159,9 +159,11 @@ class Agent:
             # calc ewc loss after every update and protected the weights w.r.t. the previous task 
             if ewc is not None:
                 self.ewc_loss = ewc.penalty(ewc_lambda, self.kb_model) # the second argument needs the paramters of the model which is protected. The second argument suggests paramaters space during training, because in the ewc algo the old paramter was saved as a reference point in the paramters space for not converging to far from it
+                #print("ewc loss", self.ewc_loss)
                 total_loss = kl_loss + self.ewc_loss
             else:
                 total_loss = kl_loss
+                #print(kl_loss)
                 
             
             #print("----->", torch.log(log_probs_kb).shape, log_probs_active.detach().shape)

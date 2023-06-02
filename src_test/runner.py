@@ -131,11 +131,11 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                 print(f"############## Progress phase - to Frame: {frame_idx + evaluation_interval}")
                 agent.progress_training(evaluation_interval)
                 
-                # evaluate the perforamance of the agent after the training
-                for env_name_eval in environments:
-                    evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
-                    print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score[1]}")
-                    wandb.log({f"Evaluation score;{env_name_eval};{agent.progNet.model_b.__class__.__name__}": evaluation_score[1]})
+                # # evaluate the perforamance of the agent after the training
+                # for env_name_eval in environments:
+                #     evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
+                #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score[1]}")
+                #     wandb.log({f"Evaluation score;{env_name_eval};{agent.progNet.model_b.__class__.__name__}": evaluation_score[1]})
 
         
         print(f"############## NEXT PHASE ##############")
@@ -148,7 +148,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
         if agent.ewc_init and len(task_list) > 0:
             # take the latest env and calculate the fisher
             agent.kb_model.unfreeze_parameters()
-            ewc = EWC(task=task_list[-1], model=agent.kb_model, num_samples=10000, ewc_gamma=0.99, device=agent.device)
+            ewc = EWC(task=task_list[-1], model=agent.kb_model, num_samples=20, ewc_gamma=0.99, device=agent.device)
             agent.ewc_init = False
 
         for frame_idx in range(0, max_frames_compress, evaluation_interval):
@@ -162,10 +162,10 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                 print("Distillation + EWC")
                 agent.compress_training(evaluation_interval, ewc)
                 
-            for env_name_eval in environments:
-                evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score[1]}")
-                wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
+            # for env_name_eval in environments:
+            #     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
+            #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score[1]}")
+            #     wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
         
         #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
         agent.active_model.lateral_connections = True
