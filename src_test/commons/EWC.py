@@ -36,7 +36,7 @@ class EWC(object):
         for n, p in deepcopy(self.params).items():
             self.mean_params[n] = variable(p.data)
             
-    def calculate_fisher(self, num_samples=1000):
+    def calculate_fisher(self, num_samples=10000):
         self.model.eval()
         fisher = {}
         
@@ -51,7 +51,7 @@ class EWC(object):
             self.model.zero_grad()
             
             action = self.model.act(state.unsqueeze(0).to(self.device))
-            next_state, reward, done, _ = self.task.step(action)
+            next_state, reward, done  = self.task.step(action)
             value, log_probs, entropy = self.model.evaluate_action(state.unsqueeze(0).to(self.device), torch.tensor(action).to(self.device))
 
             loss = -log_probs * entropy
@@ -88,7 +88,7 @@ class EWC(object):
             loss += (self.fisher[n] * (p - self.mean_params[n]) ** 2).sum()
         return loss * ewc_lambda
     
-    def update(self, model, new_task, num_samples=1000):
+    def update(self, model, new_task, num_samples=10000):
         """Update the model, after learning the latest task. Here we calculate
         directly the FIM and also reset the mean_params.
 
