@@ -269,9 +269,9 @@ class Agent:
         Args:
             step (_type_): _description_
         """
-        self.inc_active += 1
         save_path = (self.save_dir / f"active_model_{int(step) + self.inc_active}.chkpt")
         torch.save(dict(model=self.active_model.state_dict(), optimizer=self.active_optimizer.state_dict(), **self.wandb.config), save_path)
+        self.inc_active += 1
         print(f"Active net saved to {save_path}")
         
     def save_kb(self, step):
