@@ -179,7 +179,8 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
         if agent.ewc_init == False:
             ewc.update(agent.kb_model, latest_env) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
         
-        agent.active_model.reinit_parameters(0)
+        set_seed(seed)
+        agent.active_model.reinit_parameters(seed=seed)
         print("\n ############################## \n")
     
     print("Training completed.\n")
