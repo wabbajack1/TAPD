@@ -46,6 +46,8 @@ class Agent:
         self.wandb = wandb
         self.ewc_loss = 0
         self.resume = resume # continue with training state before crash
+        self.inc_active = 0
+        self.inc_kb = 0
 
         self.device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
         print(torch.cuda.is_available(), use_cuda)
@@ -262,13 +264,25 @@ class Agent:
                 last_saved_frame_idx = frame_idx
 
     def save_active(self, step):
-        save_path = (self.save_dir / f"active_model_{int(step)}.chkpt")
+        """step + self.inc_active = the last digit adds the step size to the step size
+
+        Args:
+            step (_type_): _description_
+        """
+        self.inc_active += 1
+        save_path = (self.save_dir / f"active_model_{int(step) + self.inc_active}.chkpt")
         torch.save(dict(model=self.active_model.state_dict(), optimizer=self.active_optimizer.state_dict(), **self.wandb.config), save_path)
         print(f"Active net saved to {save_path}")
         
     def save_kb(self, step):
-        save_path = Path(f"../checkpoints/2023-05-23T20-03-49/kb_model_{int(step)}.chkpt")
+        """step + self.inc_kb = the last digit adds the step size to the step size
+
+        Args:
+            step (_type_): _description_
+        """
+        save_path = (self.save_dir / f"kb_model_{int(step) + self.inc_kb}.chkpt")
         torch.save(dict(model=self.kb_model.state_dict(), optimizer=self.kb_optimizer.state_dict(), **self.wandb.config), save_path)
+        self.inc_kb += 1
         print(f"KB net saved to {save_path}")
 
     def load_active(self, step):
