@@ -184,7 +184,7 @@ class Agent:
         return np.mean(values_list_kb).item(), np.mean(values_list_ac).item(), (total_kl_loss / len(dataloader))
 
 
-    def progress_training(self, max_frames):
+    def progress_training(self, max_frames, offset):
         frame_idx = 0
         data_value = []
         data_rewards = []
@@ -216,11 +216,11 @@ class Agent:
             
             # save active model weights and optimizer status every 100_000 frames
             if (frame_idx - last_saved_frame_idx) >= 100_000:
-                print(f"Frame-#: {frame_idx}\n")
-                self.save_active(frame_idx)
+                print(f"Save Active in Frame-#: {frame_idx+offset}\n")
+                self.save_active(frame_idx+offset)
                 last_saved_frame_idx = frame_idx
 
-    def compress_training(self, max_frames, ewc):
+    def compress_training(self, max_frames, ewc, offset):
         frame_idx = 0
         last_saved_frame_idx = 0
         data_value_kb = []
@@ -261,8 +261,8 @@ class Agent:
                 
             # save active model weights and optimizer status every 100_000 frames
             if (frame_idx - last_saved_frame_idx) >= 100_000:
-                print(f"Frame-#: {frame_idx}\n")
-                self.save_kb(frame_idx)
+                print(f"Save KB in Frame-#: {frame_idx+offset}\n")
+                self.save_kb(frame_idx+offset)
                 last_saved_frame_idx = frame_idx
 
     def save_active(self, step):
@@ -271,9 +271,8 @@ class Agent:
         Args:
             step (_type_): _description_
         """
-        save_path = (self.save_dir / f"active_model_{int(step) + self.inc_active}.chkpt")
+        save_path = (self.save_dir / f"active_model_{int(step)}.chkpt")
         torch.save(dict(model=self.active_model.state_dict(), optimizer=self.active_optimizer.state_dict(), **self.wandb.config), save_path)
-        self.inc_active += 1
         print(f"Active net saved to {save_path}")
         
     def save_kb(self, step):
@@ -282,9 +281,8 @@ class Agent:
         Args:
             step (_type_): _description_
         """
-        save_path = (self.save_dir / f"kb_model_{int(step) + self.inc_kb}.chkpt")
+        save_path = (self.save_dir / f"kb_model_{int(step)}.chkpt")
         torch.save(dict(model=self.kb_model.state_dict(), optimizer=self.kb_optimizer.state_dict(), **self.wandb.config), save_path)
-        self.inc_kb += 1
         print(f"KB net saved to {save_path}")
 
     def load_active(self, step):
