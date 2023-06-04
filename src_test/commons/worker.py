@@ -52,7 +52,7 @@ class Worker(object):
         """
         states, actions, rewards, dones = [], [], [], []
         for _ in range(self.batch_size):
-            
+            #print("-->", self.state[mode].shape)
             # the kb column should watch the active column play
             action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
             next_state, reward, done = self.env_dict[mode].step(action)
@@ -63,7 +63,6 @@ class Worker(object):
             actions.append(action)
             rewards.append(reward[0])
             dones.append(done)
-            
             
             if done:
                 self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device)
@@ -97,6 +96,7 @@ class Worker(object):
         dones = self.FloatTensor(dones).to(self.device)
         states = torch.stack(states).to(self.device)
         
+        #print(states[-1].shape, states.shape, dones.shape, rewards.shape)
         #print(f"rewards {rewards.shape}, states {states.shape}, dones {dones.shape}")
         if dones[-1] == True:
             next_value = rewards[-1]
