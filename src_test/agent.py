@@ -146,13 +146,13 @@ class Agent:
         values_list_ac = []
         for batch_states, batch_actions, _ in dataloader:
             batch_states = batch_states.to(self.device)
-            batch_actions = batch_actions.to(self.device)
+            batch_actions = batch_actions.to(self.device)            
             
             # calc infernce for loss calc
             values_active, log_probs_active, _ = self.progNet.evaluate_action(batch_states, batch_actions) # kb column is the last one with operation in the prognet
             values_kb, log_probs_kb, _ = self.kb_model.evaluate_action(batch_states, batch_actions)
             
-            kl_loss = criterion(log_probs_kb.unsqueeze(0), log_probs_active.unsqueeze(0).detach())
+            kl_loss = criterion(log_probs_kb, log_probs_active.detach())
             
             # calc ewc loss after every update and protected the weights w.r.t. the previous task 
             if ewc is not None:
@@ -247,8 +247,8 @@ class Agent:
             value_kb, value_ac, loss = self.compress(ewc)
             data_value_kb.append(value_kb)
             data_value_ac.append(value_ac)
-            #print(f"Distillation loss: {loss}; Value_KB: {np.mean(data_value[-100:])}")
-            wandb.log({"Distillation loss": loss, "Value_KB": np.mean(data_value_kb[-100:]), "Compress_Value_AC": np.mean(data_value_ac[-100:])})
+            #print(f"Distillation loss: {loss}")
+            wandb.log({"Distillation loss": loss, "Compress Value KB": np.mean(data_value_kb[-100:]), "Compress Value AC": np.mean(data_value_ac[-100:])})
             
             
             # # Only for: collect rewards from kb and log it (not training data!)

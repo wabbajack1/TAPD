@@ -17,7 +17,7 @@ from gym.wrappers.monitoring.video_recorder import VideoRecorder
 from commons.EWC import EWC
 import copy 
 import os
-from commons.model import weight_reset
+from commons.model import weight_reset, init_weights
 
 # os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
 # os.environ['CUDA_VISIBLE_DEVICES']='1'
@@ -45,7 +45,7 @@ def main(args):
         project="run_pandc_atari",
         entity="agnostic",
         config=args,
-        mode="disabled",
+        #mode="disabled",
         #id="nd07r8xn",
         #resume="allow"
     )
@@ -120,7 +120,7 @@ def environment_wrapper(save_dir, env_name, video_record=False):
 
 def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_interval, seed):
     
-    visit = 5
+    visit = 2
     for i in range(visit):
         print(f"Visit of tasks = {i}")
 
@@ -139,7 +139,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     print(f"############## Progress phase - to Frame: {frame_idx + evaluation_interval}")
                     agent.progress_training(evaluation_interval, offset=frame_idx)
                     
-                    # # evaluate the perforamance of the agent after the training
+                    # evaluate the perforamance of the agent after the training
                     # for env_name_eval in environments:
                     #     evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
                     #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score[1]}")
@@ -156,7 +156,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
             if agent.ewc_init and len(task_list) > 0:
                 # take the latest env and calculate the fisher
                 agent.kb_model.unfreeze_parameters()
-                ewc = EWC(task=task_list[-1], model=agent.kb_model, num_samples=1, ewc_gamma=0.99, device=agent.device)
+                ewc = EWC(task=task_list[-1], model=agent.kb_model, num_samples=max_frames_compress, ewc_gamma=0.65, device=agent.device)
                 agent.ewc_init = False
 
             for frame_idx in range(0, max_frames_compress, evaluation_interval):
@@ -170,10 +170,10 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     print("Distillation + EWC")
                     agent.compress_training(evaluation_interval, ewc, offset=frame_idx)
                     
-                # for env_name_eval in environments:
-                #     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score[1]}")
-                #     wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
+                for env_name_eval in environments:
+                    evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
+                    print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score[1]}")
+                    wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
             
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
@@ -185,17 +185,17 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                 ewc.update(agent.kb_model, latest_env) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
             
             # reset weights after each task
-            agent.active_model.reinit_parameters()
+            agent.active_model.reset_weights()
             print("\n ############################## \n")
         
-        print("Training completed.\n")
+    print("Training completed.\n")
 
-        # Evaluate the agents performance on each environment again after training on all environments
-        for env_name in environments:
-            evaluation_score = evaluate(agent.progNet, env_name, agent.device, save_dir=save_dir)
-            print(f"Evaluation score after training on {env_name}: {evaluation_score}")
-            
-        print("Evaluation completed.\n")
+    # Evaluate the agents performance on each environment again after training on all environments
+    for env_name in environments:
+        evaluation_score = evaluate(agent.progNet, env_name, agent.device, save_dir=save_dir)
+        print(f"Evaluation score after training on {env_name}: {evaluation_score}")
+        
+    print("Evaluation completed.\n")
 
 def evaluate(model, env, device, save_dir, num_episodes=10):
     env = environment_wrapper(save_dir, env_name=env, video_record=False)

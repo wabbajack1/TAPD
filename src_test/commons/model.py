@@ -9,6 +9,13 @@ def weight_reset(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
         m.reset_parameters()
 
+def init_weights(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        print("--->")
+        nn.init.xavier_uniform_(m.weight.data)
+        if m.bias is not None:
+            nn.init.zeros_(m.bias.data)
+
 class Model(nn.Module):
     def __init__(self, action_space, env):
         super(Model, self).__init__()
@@ -224,11 +231,10 @@ class Active_Module(nn.Module):
 
         def reset_module_parameters(module):
             if hasattr(module, 'reset_parameters'):
-                print("--->", module)
                 module.reset_parameters()
+                print("-->", module._get_name())
             elif isinstance(module, nn.ModuleList) or isinstance(module, nn.Sequential):
                 for sub_module in module:
-                    print("--------+>", sub_module)
                     reset_module_parameters(sub_module)
             else:
                 print("Warning: Encountered a layer without reset_parameters method: ", module)
@@ -236,10 +242,23 @@ class Active_Module(nn.Module):
         for layer in [self.layer1, self.layer2, self.layer3, self.critic, self.actor]:
             reset_module_parameters(layer)
 
-    def reset_weights(self):
+    def reset_weights(self, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
+            random.seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            # When running on the CuDNN backend, two further options must be set
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            # Set a fixed value for the hash seed
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            print(f"Random seed set as {seed}\n")
+
         for name, m in self.named_modules():
             if 'adaptor' not in name and (isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear)):
                 m.reset_parameters()
+                print("--->", name, m)
 
     def forward(self, x, previous_out_layers=None):
 
