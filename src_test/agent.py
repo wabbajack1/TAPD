@@ -46,8 +46,6 @@ class Agent:
         self.wandb = wandb
         self.ewc_loss = 0
         self.resume = resume # continue with training state before crash
-        self.inc_active = 0
-        self.inc_kb = 0
 
         self.device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
         print(f"Cuda available: {torch.cuda.is_available()}, Set to: {use_cuda}")
