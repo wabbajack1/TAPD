@@ -55,7 +55,7 @@ class EWC(object):
             self.model.zero_grad()
             
             action = self.model.act(state.unsqueeze(0).to(self.device))
-            next_state, reward, done  = self.task.step(action)
+            next_state, reward, done, _ = self.task.step(action)
             value, log_probs, entropy = self.model.evaluate_action(state.unsqueeze(0).to(self.device), torch.tensor(action).to(self.device))
 
             loss = -log_probs * entropy

@@ -256,7 +256,7 @@ class Active_Module(nn.Module):
             print(f"Random seed set as {seed}\n")
 
         for name, m in self.named_modules():
-            if 'adaptor' not in name and (isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear)):
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 m.reset_parameters()
                 print("--->", name, m)
 

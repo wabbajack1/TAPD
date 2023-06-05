@@ -55,7 +55,7 @@ class Worker(object):
             #print("-->", self.state[mode].shape)
             # the kb column should watch the active column play
             action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
-            next_state, reward, done = self.env_dict[mode].step(action)
+            next_state, reward, done, _ = self.env_dict[mode].step(action)
             self.episode_reward[mode] += reward[0]
             self.episode_reward_orginal += reward[1]
             
