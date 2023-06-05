@@ -22,6 +22,7 @@ class Worker(object):
         self.device = device
         self.FloatTensor = torch.FloatTensor
         env = SubprocVecEnv([self.make_env(env_name) for _ in range(num_envs)])
+        self.env_name = env_name
 
         
         self.env_dict = {}
@@ -67,7 +68,7 @@ class Worker(object):
             
             # the kb column should watch the active column play
             action = self.model_dict[mode].act(self.state[mode])
-            next_state, reward, done  = self.env_dict[mode].step(action)
+            next_state, reward, done, info = self.env_dict[mode].step(action)
             self.cumulative_rewards += reward[:,1]
             
             states.append(self.state[mode])
@@ -79,27 +80,29 @@ class Worker(object):
             for i, terminal in enumerate(done):
                 if terminal:
                     self.data[mode].append(self.cumulative_rewards[i])
-                    print(f"Cumulative reward for environment {i}: {cumulative_rewards[i]}")
-                    wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:])}, commit=False)
+                    print(f"Cumulative reward for environment {self.env_name}-{i}: {self.cumulative_rewards[i]}")
+                    wandb.log({f"Training Score {mode}-{self.env_name}": np.mean(self.data[mode][-100:])}, commit=False)
                     self.cumulative_rewards[i] = 0  # Reset the cumulative reward for this environment
                 else:
                     self.state[mode] = self.FloatTensor(next_state).to(self.device)
                 
         values = self._compute_true_values(states, rewards, dones, mode=mode)
-        return states, actions, values, self.data
+        actions = np.array(actions)
+        values = np.array(values)
+        
+        return states, self.FloatTensor(actions), self.FloatTensor(values), self.data
 
     
     def _compute_true_values(self, states, rewards, dones, mode):
-        batch_size = len(states[0])  # Number of environments
-        num_steps = len(states)  # Number of steps
-        R = torch.zeros((num_steps, batch_size)).to(self.device)  # Initialize R
+        env_size = len(states[0])  # Number of environments
+        batch_size = len(states)  # Number of steps
+        R = torch.zeros((batch_size, env_size)).to(self.device)  # Initialize R
 
         # Convert everything to tensors
-        rewards = torch.tensor(rewards).float().to(self.device)
-        dones = torch.tensor(dones).bool().to(self.device)
+        rewards = torch.tensor(np.array(rewards)).float().to(self.device)
+        dones = torch.tensor(np.array(dones)).bool().to(self.device)
         states = torch.stack(states).to(self.device)
 
-        print(self.model_dict[mode].get_critic(states[-1]).shape, dones[-1].shape, rewards[-1].shape)
         # Get bootstrap values
         next_values = torch.where(
             dones[-1],
@@ -108,7 +111,7 @@ class Worker(object):
         )
 
         R[-1] = next_values
-        for i in reversed(range(num_steps - 1)):
+        for i in reversed(range(batch_size - 1)):
             R[i] = torch.where(
                 dones[i],
                 rewards[i],

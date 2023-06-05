@@ -66,7 +66,7 @@ def main(args):
     set_seed(wandb.config["seed"])
     
     # create agent
-    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume=True)
+    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume=False)
     
     ############### RUN ONLY ACTIVE COLUMN AND ONE TASK (FOR TESTING) ###############
     '''agent.create_worker_parallel(environments[0])

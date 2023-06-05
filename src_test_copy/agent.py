@@ -39,13 +39,14 @@ class Agent:
         self.entropy_coef = entropy_coef
         self.critic_coef = critic_coef
         self.no_of_workers = no_of_workers
-        self.workers = []
+        #self.workers = []
         self.batch_size = batch_size
         self.ewc_init = True # is set to false after the first distillation of a task
         self.save_dir = save_dir
         self.wandb = wandb
         self.ewc_loss = 0
         self.resume = resume # continue with training state before crash
+        self.workers = None
 
         self.device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
         print(torch.cuda.is_available(), use_cuda)
@@ -66,10 +67,10 @@ class Agent:
     def collect_batch(worker, mode):
         return worker.get_batch(mode)
     
-    def create_worker(self, i, env_name):
-        worker = Worker(env_name, {"Progress": self.progNet, "Compress": self.kb_model}, self.batch_size, self.gamma, self.device, i)
-        print(f"Worker {i} created\n")
-        return worker
+    def create_worker(self, nmb_workers, env_name):
+        workers = Worker(env_name, {"Progress": self.progNet, "Compress": self.kb_model}, self.batch_size, self.gamma, self.device, nmb_workers)
+        print(f"{nmb_workers} Workers created\n")
+        self.workers = workers
 
     def create_worker_parallel(self, env_name):
         """ create workers for the env
@@ -91,17 +92,18 @@ class Agent:
 
     def reinitialize_workers(self, env_name):
         """Reinitialize the workers for a new environment."""
-        self.workers = []
-        self.create_worker_parallel(env_name=env_name)
+        self.create_worker(self.no_of_workers, env_name)
 
     def progress(self):
-        states, actions, true_values = self.memory.pop_all()
-        self.memory.delete_memory()
-        dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
+        # states, actions, true_values = self.memory.pop_all()
+        # self.memory.delete_memory()
+        # dataset = CustomDataset(states, actions, true_values)
+        # dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         values_list = []
         
-        for batch_states, batch_actions, batch_true_values in dataloader:
+        states, actions, true_values, _ = self.workers.get_batch("Progress")
+        dataset = zip(states, actions, true_values)
+        for batch_states, batch_actions, batch_true_values in dataset:
             batch_states = batch_states.to(self.device)
             batch_actions = batch_actions.to(self.device)
             batch_true_values = batch_true_values.to(self.device)
@@ -188,23 +190,15 @@ class Agent:
         last_saved_frame_idx = 0
         self.active_model.train()
         self.kb_model.freeze_parameters()
-        self.active_model.unfreeze_parameters()  
-
+        self.active_model.unfreeze_parameters()
+            
         while frame_idx < max_frames:
-            with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
-                # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress") for worker in self.workers]
-                batches = [f.result() for f in as_completed(futures)]
+            # with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
+            #     # Submit tasks to the executor and collect results
+            #     futures = [executor.submit(self.collect_batch, worker, "Progress") for worker in self.workers]
+            #     batches = [f.result() for f in as_completed(futures)]
 
-            for j, (states, actions, true_values, _) in enumerate(batches):
-                for i, _ in enumerate(states):
-                    self.memory.push(
-                        states[i],
-                        actions[i],
-                        true_values[i]
-                    )
-
-            frame_idx += self.batch_size * len(self.workers)
+            frame_idx += self.batch_size * self.no_of_workers
             value = self.progress()
             data_value.append(value)
             wandb.log({"Critic value": np.mean(data_value[-100:])})
