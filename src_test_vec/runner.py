@@ -177,7 +177,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
             # compute the fim based on the current policy, because otherwise the fim would be not a good estimate (online learn i.e. without replay buffer)
             if agent.ewc_init:
                 # take the latest env and calculate the fisher
-                ewc = EWC(task=latest_env, model=agent.kb_model, num_samples=1, ewc_gamma=0.65, device=agent.device)
+                ewc = EWC(task=latest_env, model=agent.kb_model, num_samples=3500, ewc_gamma=0.65, device=agent.device)
                 agent.ewc_init = False
             else: # else running calulaction
                 ewc.update(agent.kb_model, latest_env) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task

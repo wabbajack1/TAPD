@@ -86,16 +86,22 @@ class Worker(object):
                 else:
                     self.state[mode] = self.FloatTensor(next_state).to(self.device)
                 
+                
         values = self._compute_true_values(states, rewards, dones, mode=mode)
         
+        # permute the shapes into (process, batch_size)
+        states = torch.stack(states).permute(1, 0, 2, 3, 4)
+        actions = torch.from_numpy(np.stack(actions)).permute(1, 0)
+        values = values.permute(1, 0)
+        print(states.shape, actions.shape, values.shape)
         return states, actions, values, self.data
 
     
     def _compute_true_values(self, states, rewards, dones, mode):
-        env_size = len(states[0])  # Number of environments
-        batch_size = len(states)  # Number of steps
+        env_size = len(states[0])  # Number of environments == #-workers
+        batch_size = len(states)  # batch_size == Number of steps in the env
         R = torch.zeros((batch_size, env_size)).to(self.device)  # Initialize R
-
+        
         # Convert everything to tensors
         rewards = torch.tensor(np.array(rewards)).float().to(self.device)
         dones = torch.tensor(np.array(dones)).bool().to(self.device)
