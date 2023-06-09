@@ -80,20 +80,28 @@ class Worker(object):
             for i, terminal in enumerate(done):
                 if terminal:
                     self.data[mode].append(self.cumulative_rewards[i])
-                    print(f"Cumulative reward for environment {self.env_name}-{i}: {self.cumulative_rewards[i]}")
+                    print(f"Cumulative reward for environment {self.env_name}-{i}: {self.cumulative_rewards[i]}; Episodes: {len(self.data[mode])}")
                     wandb.log({f"Training Score {mode}-{self.env_name}": np.mean(self.data[mode][-100:])}, commit=False)
                     self.cumulative_rewards[i] = 0  # Reset the cumulative reward for this environment
                 else:
                     self.state[mode] = self.FloatTensor(next_state).to(self.device)
                 
                 
-        values = self._compute_true_values(states, rewards, dones, mode=mode)
-        
         # permute the shapes into (process, batch_size)
-        states = torch.stack(states).permute(1, 0, 2, 3, 4)
-        actions = torch.from_numpy(np.stack(actions)).permute(1, 0)
-        values = values.permute(1, 0)
-        print(states.shape, actions.shape, values.shape)
+        # states = torch.stack(states).permute(1, 0, 2, 3, 4)
+        # actions = torch.stack(actions).permute(1, 0)
+        # dones = torch.from_numpy(np.stack(dones)).permute(1, 0)
+        # rewards = torch.from_numpy(np.stack(rewards)).permute(1, 0)
+        
+        states = torch.stack(states).permute(0, 1, 2, 3, 4)
+        actions = torch.stack(actions).permute(0, 1)
+        dones = torch.from_numpy(np.stack(dones)).permute(0, 1)
+        rewards = torch.from_numpy(np.stack(rewards)).permute(0, 1)
+        
+        #print(states.shape, actions.shape, dones.shape, rewards.shape)
+        
+        
+        values = self._compute_true_values(states, rewards, dones, mode=mode)
         return states, actions, values, self.data
 
     
@@ -103,9 +111,11 @@ class Worker(object):
         R = torch.zeros((batch_size, env_size)).to(self.device)  # Initialize R
         
         # Convert everything to tensors
-        rewards = torch.tensor(np.array(rewards)).float().to(self.device)
-        dones = torch.tensor(np.array(dones)).bool().to(self.device)
-        states = torch.stack(states).to(self.device)
+        rewards = rewards.float().to(self.device)
+        dones = dones.bool().to(self.device)
+        states = states.to(self.device)
+        
+        print(states[-1].shape)
 
         # Get bootstrap values
         next_values = torch.where(
@@ -113,7 +123,7 @@ class Worker(object):
             rewards[-1],
             self.model_dict[mode].get_critic(states[-1]).squeeze(1)
         )
-
+        
         R[-1] = next_values
         for i in reversed(range(batch_size - 1)):
             R[i] = torch.where(

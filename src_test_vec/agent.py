@@ -108,19 +108,17 @@ class Agent:
             batch_actions = batch_actions.to(self.device)
             batch_true_values = batch_true_values.to(self.device)
             #print(f"batch_states on {batch_states.shape}, batch_actions on {batch_actions.shape}, batch_true_values on {batch_true_values.shape}\n")
-            
             values, log_probs, entropy = self.progNet.evaluate_action(batch_states, batch_actions) # inference of active column via kb column
-
+            
             values = torch.squeeze(values)
             log_probs = torch.squeeze(log_probs)
             entropy = torch.squeeze(entropy)
             batch_true_values = torch.squeeze(batch_true_values)
             
-            #print(values.shape, log_probs.shape, entropy.shape, batch_true_values.shape, entropy)
-            
             advantages = batch_true_values - values
             critic_loss = advantages.pow(2).mean()
-
+            
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
             actor_loss = -(log_probs * advantages.detach()).mean()
             total_loss = (self.critic_coef * critic_loss) + actor_loss - (self.entropy_coef * entropy)
 
@@ -130,7 +128,6 @@ class Agent:
             self.active_optimizer.step()
 
             values_list.extend(values.tolist())
-
         return np.mean(values_list).item()
 
 
