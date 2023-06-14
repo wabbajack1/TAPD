@@ -135,10 +135,10 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     print("Distillation + EWC")
                     agent.compress_training(evaluation_interval, ewc, offset=frame_idx)
                     
-                for env_name_eval in environments:
-                    evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                    print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
-                    wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
+                # for env_name_eval in environments:
+                #     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
+                #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
+                #     wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
             
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True

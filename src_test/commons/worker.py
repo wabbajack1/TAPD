@@ -5,9 +5,9 @@ import numpy as np
 import wandb
 import torch
 
-
-frame_nmb = {}
-frame_list = []
+# keep track of the number of frames
+frame_number = {}
+curren_frame_number = []
 
 class Worker(object):
     """The worker is the one which interacts with the env and collects
@@ -15,10 +15,7 @@ class Worker(object):
     Here self.env instanace gets created in each thread, which means same envrinment as a copy in different threads.
     """
 
-    def __init__(self, env_name, model_dict, batch_size, gamma, device, id):
-        global frame_nmb
-        global frame_list
-        
+    def __init__(self, env_name, model_dict, batch_size, gamma, device, id):        
         self.device = device
         self.env_name = env_name
 
@@ -57,6 +54,9 @@ class Worker(object):
         Returns:
             states, actions, values
         """
+        global frame_number
+        global curren_frame_number
+        
         states, actions, rewards, dones = [], [], [], []
         for _ in range(self.batch_size):
             #print("-->", self.state[mode].shape)
@@ -66,28 +66,28 @@ class Worker(object):
             self.episode_reward[mode] += reward
             #self.episode_reward_orginal += reward[1]
             
-            states.append(self.state[mode]) # 1. reset, 2. reset
+            states.append(self.state[mode]) 
             actions.append(action)
             rewards.append(reward)
-            dones.append(done) # 1. done state, 2. done state
+            dones.append(done)
+            curren_frame_number.append(info["episode_frame_number"])
+            
+                    
             if done:
+                if self.env_name not in frame_number.keys():
+                    frame_number[self.env_name] = 0
+                    
+                frame_number[self.env_name] += max(curren_frame_number)
                 self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device)
                 self.data[mode].append(self.episode_reward[mode])
                 print(f"Mode {mode}: Worker {self.id} in episode {len(self.data[mode])} Average Score: {np.mean(self.data[mode][-100:])}")
-                wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), "Frame-#":frame_nmb[env_name]}, commit=False)
+                wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), "Frame-#":frame_number[self.env_name]}, commit=False)
                 self.episode_reward[mode] = 0
+                curren_frame_number = []
                # self.episode_reward_orginal = 0
             else:
                 self.state[mode] = self.FloatTensor(next_state).to(self.device)
             
-            # save frame number across different games/tasks
-            frame_list.append(info["frame_number"])
-            if capture and len(frame_list)==20:
-                try:
-                    frame_nmb[self.env_name] += max(frame_list)
-                    frame_list = []
-                except:
-                    frame_nmb[self.env_name] = info["frame_number"]
                 
         values = self._compute_true_values(states, rewards, dones, mode=mode).unsqueeze(1)
         return states, actions, values, info["frame_number"]
