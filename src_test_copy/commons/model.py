@@ -1,6 +1,20 @@
 import torch
 import wandb
 import torch.nn as nn
+import os
+import numpy as np
+import random
+
+def weight_reset(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        m.reset_parameters()
+
+def init_weights(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        print("--->")
+        nn.init.xavier_uniform_(m.weight.data)
+        if m.bias is not None:
+            nn.init.zeros_(m.bias.data)
 
 class Model(nn.Module):
     def __init__(self, action_space, env):
@@ -52,9 +66,10 @@ class Model(nn.Module):
     def act(self, state):
         value, actor_features = self.forward(state)
         dist = torch.distributions.Categorical(actor_features)
+        
         chosen_action = dist.sample()
         return chosen_action.item()
-    
+
 class KB_Module(nn.Module):
     def __init__(self, device):
         super(KB_Module, self).__init__()
@@ -102,8 +117,9 @@ class KB_Module(nn.Module):
     def act(self, state):
         _, _, _, _, critic_output, actor_features = self.forward(state.to(self.device))
         dist = torch.distributions.Categorical(actor_features)
+        
         chosen_action = dist.sample()
-        return chosen_action.cpu().numpy()
+        return chosen_action.item()
 
     def get_critic(self, x):
         """
@@ -202,20 +218,48 @@ class Active_Module(nn.Module):
         :param seed: Seed for the random number generator
         """
         if seed is not None:
+            np.random.seed(seed)
+            random.seed(seed)
             torch.manual_seed(seed)
             torch.cuda.manual_seed(seed)
             # When running on the CuDNN backend, two further options must be set
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
+            # Set a fixed value for the hash seed
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            print(f"Random seed set as {seed}\n")
+
+        def reset_module_parameters(module):
+            if hasattr(module, 'reset_parameters'):
+                module.reset_parameters()
+                print("-->", module._get_name())
+            elif isinstance(module, nn.ModuleList) or isinstance(module, nn.Sequential):
+                for sub_module in module:
+                    reset_module_parameters(sub_module)
+            else:
+                print("Warning: Encountered a layer without reset_parameters method: ", module)
 
         for layer in [self.layer1, self.layer2, self.layer3, self.critic, self.actor]:
-            if hasattr(layer, 'reset_parameters'):
-                layer.reset_parameters()
-            else:
-                for sublayer in layer:
-                    if hasattr(sublayer, 'reset_parameters'):
-                        sublayer.reset_parameters()
-            
+            reset_module_parameters(layer)
+
+    def reset_weights(self, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
+            random.seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            # When running on the CuDNN backend, two further options must be set
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            # Set a fixed value for the hash seed
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            print(f"Random seed set as {seed}\n")
+
+        for name, m in self.named_modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                m.reset_parameters()
+                #print("--->", name, m)
+
     def forward(self, x, previous_out_layers=None):
 
         """
@@ -263,8 +307,9 @@ class Active_Module(nn.Module):
     def act(self, state):
         value, actor_features = self.forward(state.to(self.device))
         dist = torch.distributions.Categorical(actor_features)
+        
         chosen_action = dist.sample()
-        return chosen_action.cpu().numpy()
+        return chosen_action.item()
 
     def evaluate_action(self, state, action, *lateral_outputs):
         """
@@ -347,7 +392,7 @@ class ProgressiveNet(nn.Module):
         #self.icm = ICM(state_dim, action_dim, forward_hidden_dim)
         self.icm = None
         
-        #wandb.watch(self, log_freq=1, log="all")
+        wandb.watch(self, log_freq=1, log="all")
 
     def forward(self, x, action=None):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)
@@ -405,9 +450,8 @@ class ProgressiveNet(nn.Module):
     def act(self, state):
         value, actor_features, _, _ = self.forward(state)
         dist = torch.distributions.Categorical(actor_features)
-        
         chosen_action = dist.sample()
-        return chosen_action.cpu().numpy()
+        return chosen_action.item()
 
     def freeze_model(self, model_name):
         if model_name == "model_a":
@@ -439,54 +483,61 @@ class ProgressiveNet(nn.Module):
 
 if __name__ == "__main__":
     import sys
-    import os
+    # import os
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     import runner
-    from torchviz import make_dot
-    import copy
+    # from torchviz import make_dot
+    # import copy
 
-    env = runner.environment_wrapper("PongNoFrameskip-v4")
-    nn1 = KB_Module("cpu", env)
-    #nn2 = Adaptor()
-    nn3 = Active_Module("cpu", env, lateral_connections=True)
+    nn1 = KB_Module("cpu")
+    # #nn2 = Adaptor()
+    nn3 = Active_Module("cpu", lateral_connections=False)
 
-    nn_super = ProgressiveNet(nn1, nn3)
-    #print(nn_super)
+    # nn_super = ProgressiveNet(nn1, nn3)
+    # #print(nn_super)
 
-    optimizer_ac1 = torch.optim.SGD(nn1.parameters(), lr=0.8, momentum=0.9)
-    optimizer_ac2 = torch.optim.SGD(nn3.parameters(), lr=0.8, momentum=0.9)
-    #optimizer_super = torch.optim.SGD(nn_super.parameters(), lr=0.8, momentum=0.9)
+    # optimizer_ac1 = torch.optim.SGD(nn1.parameters(), lr=0.8, momentum=0.9)
+    # optimizer_ac2 = torch.optim.SGD(nn3.parameters(), lr=0.8, momentum=0.9)
+    # #optimizer_super = torch.optim.SGD(nn_super.parameters(), lr=0.8, momentum=0.9)
 
-    loss = torch.nn.MSELoss()
-    old_params = nn_super.store_parameters(nn_super) 
+    # loss = torch.nn.MSELoss()
+    # old_params = nn_super.store_parameters(nn_super) 
    
-    for i in range(0, 2):
-        optimizer_ac1.zero_grad()
-        optimizer_ac2.zero_grad()
+    # for i in range(0, 2):
+    #     optimizer_ac1.zero_grad()
+    #     optimizer_ac2.zero_grad()
 
-        if i == 1:
-            nn_super.freeze_model("model_b")
-            old_params = nn_super.store_parameters(nn_super.model_b)
+    #     if i == 1:
+    #         nn_super.freeze_model("model_b")
+    #         old_params = nn_super.store_parameters(nn_super.model_b)
 
-        input = torch.randn(10, 1, 84, 84)
-        target1 = torch.randn(10, 6)
-        target2 = torch.randn(10, 1)
+    #     input = torch.randn(10, 1, 84, 84)
+    #     target1 = torch.randn(10, 6)
+    #     target2 = torch.randn(10, 1)
 
-        y1, y2, y3, y4 = nn_super(input)
+    #     y1, y2, y3, y4 = nn_super(input)
 
-        loss1 = loss(y2, target1)
-        loss2 = loss(y1, target2)
-        total_loss = loss1 + loss2
-        total_loss.backward()
-        optimizer_ac1.step()
-        #optimizer_ac2.step()
+    #     loss1 = loss(y2, target1)
+    #     loss2 = loss(y1, target2)
+    #     total_loss = loss1 + loss2
+    #     total_loss.backward()
+    #     optimizer_ac1.step()
+    #     #optimizer_ac2.step()
 
-        if i == 1:
-            if nn_super.compare_parameters(old_params, nn_super.model_b):
-                print("Parameter values are the same.")
-            else:
-                print("Parameter values have changed.")
+    #     if i == 1:
+    #         if nn_super.compare_parameters(old_params, nn_super.model_b):
+    #             print("Parameter values are the same.")
+    #         else:
+    #             print("Parameter values have changed.")
 
+    # input = torch.randn(10, 1, 84, 84)
+
+    # o1 = nn1(input)
+    # weight_reset(nn1)
+    # o2 = nn1(input)
+
+    # print(torch.equal(o1[1], o2[1]))
+    nn3.reset_weights()
 
 
     #print(y1.shape, y2.shape, y3.shape, y4.shape)

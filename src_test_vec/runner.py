@@ -77,10 +77,10 @@ def main(args):
 
     ###################### start progress and compress algo #########################
     # load agent if required crash and continue training
-    if agent.load_active(100_000) and agent.resume:
-        print("Load successful!")
-    else:
-        print("Load unsuccessful!")
+    # if agent.load_active(100_000) and agent.resume:
+    #     print("Load successful!")
+    # else:
+    #     print("Load unsuccessful!")
 
    
     progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate_nmb, seed=wandb.config["seed"])

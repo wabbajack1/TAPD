@@ -146,7 +146,10 @@ class Agent:
         
         values_list_kb = []
         values_list_ac = []
-        for batch_states, batch_actions, _ in dataloader:
+        
+        states, actions, true_values, _ = self.workers.get_batch("Progress")
+        dataset = zip(states, actions, true_values)
+        for batch_states, batch_actions, _ in dataset:
             batch_states = batch_states.to(self.device)
             batch_actions = batch_actions.to(self.device)
             

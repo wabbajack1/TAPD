@@ -21,7 +21,7 @@ def main():
     model = A2C('CnnPolicy', env, verbose=1)
 
     # Train the agent
-    #model.learn(total_timesteps=100000)
+    model.learn(total_timesteps=100000)
 
     # Save the trained agent
     #model.save("a2c_pong")

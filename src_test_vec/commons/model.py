@@ -4,6 +4,13 @@ import torch.nn as nn
 import os
 import numpy as np
 import random
+import gym
+
+from stable_baselines3 import A2C
+from stable_baselines3.common.policies import ActorCriticPolicy
+from typing import Any, Dict, Callable, Optional, Type, List, Union
+from stable_baselines3.common.vec_env import SubprocVecEnv
+import common.wrappers
 
 def weight_reset(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
@@ -392,7 +399,7 @@ class ProgressiveNet(nn.Module):
         #self.icm = ICM(state_dim, action_dim, forward_hidden_dim)
         self.icm = None
         
-        wandb.watch(self, log_freq=1, log="all")
+        #wandb.watch(self, log_freq=1, log="all")
 
     def forward(self, x, action=None):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)
@@ -408,7 +415,7 @@ class ProgressiveNet(nn.Module):
                 predicted_next_state
             )
 
-        return critic_output_model_b, actor_output_model_b, critic_output_model_a, actor_output_model_a
+        return critic_output_model_b, actor_output_model_b
     
     def get_critic(self, x):
         with torch.no_grad():
@@ -480,68 +487,122 @@ class ProgressiveNet(nn.Module):
                 print(f"Parameter '{name}' has changed.")
         return same_values
 
+class CustomPolicy(ActorCriticPolicy):
+    def __init__(
+        self,
+        observation_space: gym.spaces.Space,
+        action_space: gym.spaces.Space,
+        lr_schedule: Callable[[float], float],
+        net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
+        activation_fn: Type[nn.Module] = nn.Tanh,
+        *args: Any,
+        **kwargs: Any,
+    ):
+        super(CustomPolicy, self).__init__(
+            observation_space,
+            action_space,
+            lr_schedule,
+            net_arch,
+            activation_fn,
+            *args,
+            **kwargs,
+        )
+
+        # Define your progressive network here
+        # Make sure your ProgressiveNet outputs both policy and value function information
+        active_model = Active_Module("cpu", lateral_connections=False).to("cpu")
+        kb_model = KB_Module("cpu").to("cpu")
+        self.progressive_net = ProgressiveNet(kb_model, active_model)
+
+    def forward(self, obs: torch.Tensor, deterministic: bool = False):
+        return self._predict(obs, deterministic=deterministic)
+
+    def _predict(self, latent_pi: torch.Tensor, deterministic: bool = False):
+        # Override _predict if your ProgressiveNet's output is different from the default policy's
+        return super()._predict(latent_pi, deterministic=deterministic)
+
+
+# Define a function to create the environment
+def make_env(env_id, rank, seed=0):
+    def _init():
+        env = common.wrappers.make_atari(env_id, full_action_space=True)
+        env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True)
+        env = common.wrappers.wrap_pytorch(env)
+        env.seed(seed + rank)
+        return env
+    return _init
+
 
 if __name__ == "__main__":
-    import sys
-    # import os
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-    import runner
-    # from torchviz import make_dot
-    # import copy
+    
+    # Create environment
+    num_envs = 4
+    env_id = "PongNoFrameskip-v4"
+    env = SubprocVecEnv([make_env(env_id, i) for i in range(num_envs)])
 
-    nn1 = KB_Module("cpu")
-    # #nn2 = Adaptor()
-    nn3 = Active_Module("cpu", lateral_connections=False)
+    model = A2C(CustomPolicy, env, verbose=1)
+    model.learn(total_timesteps=10000)
 
-    # nn_super = ProgressiveNet(nn1, nn3)
-    # #print(nn_super)
+    # import sys
+    # # import os
+    # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    # import runner
+    # # from torchviz import make_dot
+    # # import copy
 
-    # optimizer_ac1 = torch.optim.SGD(nn1.parameters(), lr=0.8, momentum=0.9)
-    # optimizer_ac2 = torch.optim.SGD(nn3.parameters(), lr=0.8, momentum=0.9)
-    # #optimizer_super = torch.optim.SGD(nn_super.parameters(), lr=0.8, momentum=0.9)
+    # nn1 = KB_Module("cpu")
+    # # #nn2 = Adaptor()
+    # nn3 = Active_Module("cpu", lateral_connections=False)
 
-    # loss = torch.nn.MSELoss()
-    # old_params = nn_super.store_parameters(nn_super) 
+    # # nn_super = ProgressiveNet(nn1, nn3)
+    # # #print(nn_super)
+
+    # # optimizer_ac1 = torch.optim.SGD(nn1.parameters(), lr=0.8, momentum=0.9)
+    # # optimizer_ac2 = torch.optim.SGD(nn3.parameters(), lr=0.8, momentum=0.9)
+    # # #optimizer_super = torch.optim.SGD(nn_super.parameters(), lr=0.8, momentum=0.9)
+
+    # # loss = torch.nn.MSELoss()
+    # # old_params = nn_super.store_parameters(nn_super) 
    
-    # for i in range(0, 2):
-    #     optimizer_ac1.zero_grad()
-    #     optimizer_ac2.zero_grad()
+    # # for i in range(0, 2):
+    # #     optimizer_ac1.zero_grad()
+    # #     optimizer_ac2.zero_grad()
 
-    #     if i == 1:
-    #         nn_super.freeze_model("model_b")
-    #         old_params = nn_super.store_parameters(nn_super.model_b)
+    # #     if i == 1:
+    # #         nn_super.freeze_model("model_b")
+    # #         old_params = nn_super.store_parameters(nn_super.model_b)
 
-    #     input = torch.randn(10, 1, 84, 84)
-    #     target1 = torch.randn(10, 6)
-    #     target2 = torch.randn(10, 1)
+    # #     input = torch.randn(10, 1, 84, 84)
+    # #     target1 = torch.randn(10, 6)
+    # #     target2 = torch.randn(10, 1)
 
-    #     y1, y2, y3, y4 = nn_super(input)
+    # #     y1, y2, y3, y4 = nn_super(input)
 
-    #     loss1 = loss(y2, target1)
-    #     loss2 = loss(y1, target2)
-    #     total_loss = loss1 + loss2
-    #     total_loss.backward()
-    #     optimizer_ac1.step()
-    #     #optimizer_ac2.step()
+    # #     loss1 = loss(y2, target1)
+    # #     loss2 = loss(y1, target2)
+    # #     total_loss = loss1 + loss2
+    # #     total_loss.backward()
+    # #     optimizer_ac1.step()
+    # #     #optimizer_ac2.step()
 
-    #     if i == 1:
-    #         if nn_super.compare_parameters(old_params, nn_super.model_b):
-    #             print("Parameter values are the same.")
-    #         else:
-    #             print("Parameter values have changed.")
+    # #     if i == 1:
+    # #         if nn_super.compare_parameters(old_params, nn_super.model_b):
+    # #             print("Parameter values are the same.")
+    # #         else:
+    # #             print("Parameter values have changed.")
 
-    # input = torch.randn(10, 1, 84, 84)
+    # # input = torch.randn(10, 1, 84, 84)
 
-    # o1 = nn1(input)
-    # weight_reset(nn1)
-    # o2 = nn1(input)
+    # # o1 = nn1(input)
+    # # weight_reset(nn1)
+    # # o2 = nn1(input)
 
-    # print(torch.equal(o1[1], o2[1]))
-    nn3.reset_weights()
+    # # print(torch.equal(o1[1], o2[1]))
+    # nn3.reset_weights()
 
 
-    #print(y1.shape, y2.shape, y3.shape, y4.shape)
-    #print(x.shape, y.shape, critic_output.shape, actor_output.shape, x4.shape)
+    # #print(y1.shape, y2.shape, y3.shape, y4.shape)
+    # #print(x.shape, y.shape, critic_output.shape, actor_output.shape, x4.shape)
 
     
-    pass
+    # pass

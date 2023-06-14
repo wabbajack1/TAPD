@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../venv/lib/python3.9/site-packages/")
+sys.path.append("../venv/lib/python3.10/site-packages/")
 import agent
 import gym
 import wandb
@@ -21,7 +21,7 @@ from commons.model import weight_reset, init_weights
 
 # os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
 # os.environ['CUDA_VISIBLE_DEVICES']='1'
-#os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
+os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
 
 print(f"Torch version: {torch.__version__}")
 
@@ -39,16 +39,17 @@ def set_seed(seed: int = 44) -> None:
 
 
 def main(args):
-    
     wandb.init(
         # set the wandb project where this run will be logged
         project="run_pandc_atari",
         entity="agnostic",
         config=args,
-        #mode="disabled",
+        mode="disabled",
         #id="nd07r8xn",
         #resume="allow"
     )
+    
+    set_seed(wandb.config["seed"])
     
     environments = ["PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
     max_frames_progress = wandb.config["max_frames_progress"]
@@ -61,14 +62,13 @@ def main(args):
     no_of_workers = wandb.config["workers"]
     eps = wandb.config["epsilon"]
     evaluate_nmb = wandb.config["evaluate"]
-    set_seed(wandb.config["seed"])
 
     # create path for storing meta data of the agent (hyperparams, video)
     save_dir = Path("../checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     save_dir.mkdir(parents=True)
     
     # create agent
-    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume=True)
+    agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume=False)
     
     ############### RUN ONLY ACTIVE COLUMN AND ONE TASK (FOR TESTING) ###############
     '''agent.create_worker_parallel(environments[0])
@@ -77,11 +77,10 @@ def main(args):
 
     ###################### start progress and compress algo #########################
     # load agent if required crash and continue training
-    if agent.load_active(100_000) and agent.resume:
-        print("Load successful!")
-    else:
-        print("Load unsuccessful!")
-
+    # if agent.load_active(100_000) and agent.resume:
+    #     print("Load successful!")
+    # else:
+    #     print("Load unsuccessful!")
    
     progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate_nmb, seed=wandb.config["seed"])
 
@@ -120,9 +119,8 @@ def environment_wrapper(save_dir, env_name, video_record=False):
 
 def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_interval, seed):
     
-    visit = 2
+    visit = 3
     for i in range(visit):
-        print(f"Visit of tasks = {i}")
 
         for env_name in environments:        
         
@@ -149,15 +147,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
             print(f"############## NEXT PHASE ##############")
 
             ############## compress activity ##############
-            print(f"############## Compress phase with EWC.task-{env_name}")
-            task_list = [environment_wrapper(save_dir=save_dir, env_name=environments[i], video_record=False) for i in range(environments.index(stop_value))] # list for ewc calculation for considerering the previous tasks
-        
-            # init the first computation of the fisher, i.e. because later we compute only the running average
-            if agent.ewc_init and len(task_list) > 0:
-                # take the latest env and calculate the fisher
-                agent.kb_model.unfreeze_parameters()
-                ewc = EWC(task=task_list[-1], model=agent.kb_model, num_samples=max_frames_compress, ewc_gamma=0.65, device=agent.device)
-                agent.ewc_init = False
+            #task_list = [environment_wrapper(save_dir=save_dir, env_name=environments[i], video_record=False) for i in range(environments.index(stop_value))] # list for ewc calculation for considerering the previous tasks
 
             for frame_idx in range(0, max_frames_compress, evaluation_interval):
                 print(f"############## Compress phase - to Frame: {frame_idx + evaluation_interval}")
@@ -170,10 +160,10 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     print("Distillation + EWC")
                     agent.compress_training(evaluation_interval, ewc, offset=frame_idx)
                     
-                for env_name_eval in environments:
-                    evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                    print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score[1]}")
-                    wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score[1]})
+                # for env_name_eval in environments:
+                #     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
+                #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
+                #     wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
             
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
@@ -181,16 +171,24 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
             
             # After learning each task, update EWC
             latest_env = environment_wrapper(save_dir=save_dir, env_name=env_name, video_record=False)
-            if agent.ewc_init == False:
+            
+            # init the first computation of the fisher, i.e. because later we compute only the running average
+            # compute the fim based on the current policy, because otherwise the fim would be not a good estimate (online learn i.e. without replay buffer)
+            if agent.ewc_init:
+                # take the latest env and calculate the fisher
+                ewc = EWC(task=latest_env, model=agent.kb_model, num_samples=1, ewc_gamma=0.65, device=agent.device)
+                agent.ewc_init = False
+            else: # else running calulaction
                 ewc.update(agent.kb_model, latest_env) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
             
             # reset weights after each task
             agent.active_model.reset_weights()
-            print("\n ############################## \n")
+            print(f"############## VISIT - {i} ################ END OF TASK - {env_name}##############################\n")
         
     print("Training completed.\n")
 
     # Evaluate the agents performance on each environment again after training on all environments
+    print(20*"=", "END Evaluation started", 20*"=")
     for env_name in environments:
         evaluation_score = evaluate(agent.progNet, env_name, agent.device, save_dir=save_dir)
         print(f"Evaluation score after training on {env_name}: {evaluation_score}")
@@ -212,15 +210,15 @@ def evaluate(model, env, device, save_dir, num_episodes=10):
         while not done:
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
             action = model.act(state_tensor.to(device))
-            next_state, reward, done = env.step(action)
-            episode_reward += reward[0]
-            episode_reward_orignal += reward[1]
+            next_state, reward, done, _ = env.step(action)
+            episode_reward += reward
+            #episode_reward_orignal += reward[1]
             state = next_state
 
         evaluation_scores.append(episode_reward)
-        evaluation_scores_original.append(episode_reward_orignal)
+        #evaluation_scores_original.append(episode_reward_orignal)
 
-    return np.mean(evaluation_scores), np.mean(evaluation_scores_original)
+    return np.mean(evaluation_scores)#, np.mean(evaluation_scores_original)
 
 def train_PC(env_dict, max_frames, agent):
     "Train all 5 taks using PNN"

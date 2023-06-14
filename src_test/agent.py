@@ -61,10 +61,11 @@ class Agent:
         # seperate optimizers because freezing method quite does not work, thererfore update only required nets
         self.kb_optimizer = torch.optim.RMSprop(self.kb_model.parameters(), lr=self.lr, eps=eps)
         self.active_optimizer = torch.optim.RMSprop(self.active_model.parameters(), lr=self.lr, eps=eps)
+        self.progNet_optimizer = torch.optim.RMSprop(self.progNet.parameters(), lr=self.lr, eps=eps)
 
     @staticmethod
-    def collect_batch(worker, mode):
-        return worker.get_batch(mode)
+    def collect_batch(worker, mode, capture):
+        return worker.get_batch(mode, capture)
     
     def create_worker(self, i, env_name):
         worker = Worker(env_name, {"Progress": self.progNet, "Compress": self.kb_model}, self.batch_size, self.gamma, self.device, i)
@@ -108,7 +109,7 @@ class Agent:
             #print(f"batch_states on {batch_states.shape}, batch_actions on {batch_actions.shape}, batch_true_values on {batch_true_values.shape}\n")
             
             values, log_probs, entropy = self.progNet.evaluate_action(batch_states, batch_actions) # inference of active column via kb column
-
+            
             values = torch.squeeze(values)
             log_probs = torch.squeeze(log_probs)
             entropy = torch.squeeze(entropy)
@@ -123,10 +124,13 @@ class Agent:
             total_loss = (self.critic_coef * critic_loss) + actor_loss - (self.entropy_coef * entropy)
 
             self.active_optimizer.zero_grad()
+            #self.progNet_optimizer.zero_grad()
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.active_model.parameters(), 1)
+            #torch.nn.utils.clip_grad_norm_(self.progNet.parameters(), 1)
             self.active_optimizer.step()
-
+            #self.progNet_optimizer.step()
+            
             values_list.extend(values.tolist())
 
         return np.mean(values_list).item()
@@ -151,7 +155,8 @@ class Agent:
             # calc infernce for loss calc
             values_active, log_probs_active, _ = self.progNet.evaluate_action(batch_states, batch_actions) # kb column is the last one with operation in the prognet
             values_kb, log_probs_kb, _ = self.kb_model.evaluate_action(batch_states, batch_actions)
-            
+
+
             kl_loss = criterion(log_probs_kb.unsqueeze(0), log_probs_active.unsqueeze(0).detach())
             
             # calc ewc loss after every update and protected the weights w.r.t. the previous task 
@@ -169,11 +174,14 @@ class Agent:
             # calulate the gradients
             self.active_optimizer.zero_grad()
             self.kb_optimizer.zero_grad()
+            #self.progNet_optimizer.zero_grad()
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.kb_model.parameters(), 1)
+            #torch.nn.utils.clip_grad_norm_(self.progNet.parameters(), 1)
             
             # make only step in kb column
             self.kb_optimizer.step()
+            #self.progNet_optimizer.step()
 
             total_kl_loss += total_loss.item()
             values_list_kb.extend(values_kb.tolist())
@@ -190,15 +198,16 @@ class Agent:
         last_saved_frame_idx = 0
         self.active_model.train()
         self.kb_model.freeze_parameters()
-        self.active_model.unfreeze_parameters()  
+        self.active_model.unfreeze_parameters()
 
         while frame_idx < max_frames:
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress") for worker in self.workers]
-                batches = [f.result() for f in as_completed(futures)]
-
-            for j, (states, actions, true_values, _) in enumerate(batches):
+                futures = [executor.submit(self.collect_batch, worker, "Progress", True) for worker in self.workers]
+                batches = [f.result() for f in as_completed(futures)] # nmb of workers (each worker has states, actions, true_values, ...)
+            
+            # iterate over each workers batch and push to memory (batches = (#-workers, states, actions, ...))
+            for j, (states, actions, true_values, env_frame_info) in enumerate(batches):
                 for i, _ in enumerate(states):
                     self.memory.push(
                         states[i],
@@ -232,7 +241,7 @@ class Agent:
             # collect training data
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress") for worker in self.workers]
+                futures = [executor.submit(self.collect_batch, worker, "Progress", False) for worker in self.workers]
                 batches = [f.result() for f in as_completed(futures)]
                 
                 for j, (states, actions, true_values, _) in enumerate(batches):

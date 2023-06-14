@@ -258,7 +258,7 @@ class Active_Module(nn.Module):
         for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 m.reset_parameters()
-                print("--->", name, m)
+                #print("--->", name, m)
 
     def forward(self, x, previous_out_layers=None):
 

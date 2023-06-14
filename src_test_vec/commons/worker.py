@@ -7,7 +7,7 @@ import common.wrappers
 import numpy as np
 import wandb
 import torch
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from commons.model import KB_Module, Active_Module, ProgressiveNet
 
 
@@ -57,50 +57,96 @@ class Worker(object):
             return env
         return _init
 
-    def get_batch(self, mode:str="Progress"):
-        """Collect rollout for the dataloader
 
-        Returns:
-            states, actions, values
-        """
+    # def get_batch(self, mode:str="Progress"):
+    #     """
+    #     Get a batch of experiences from the vectorized environment.
+
+    #     Args:
+
+    #     Returns:
+    #         A batch of experiences and the computed true and bootstrap values.
+    #     """
+
+    #     states = []
+    #     actions = []
+    #     rewards = []
+    #     next_states = []
+    #     dones = []
+    #     true_values = []
+    #     bootstrap_values = []
+
+    #     for _ in range(self.batch_size):
+    #         action = self.model_dict[mode].act(self.state[mode]) # Assuming the agent has a method to select actions
+    #         next_state, reward, done, info = self.env_dict[mode].step(action)
+    #         self.cumulative_rewards += reward
+            
+    #         for i in range(self.env_dict[mode].num_envs):
+    #             # If done, get the terminal observation from the info dict
+    #             if done[i]:
+    #                 terminal_observation = info[i].get('terminal_observation')
+    #                 if terminal_observation is not None:
+    #                     next_state[i] = self.FloatTensor(terminal_observation).to(self.device)
+                        
+    #                 # logging
+    #                 self.data[mode].append(self.cumulative_rewards[i])
+    #                 print(f"Cumulative reward for environment {self.env_name}-{i}: {self.cumulative_rewards[i]}; Episodes: {len(self.data[mode])}")
+    #                 wandb.log({f"Training Score {mode}-{self.env_name}": np.mean(self.data[mode][-100:]), "Frame-#":info[i]["frame_number"]}, commit=False)
+    #                 self.cumulative_rewards[i] = 0  # Reset the cumulative reward for this environment
+
+    #             # Compute the true value (discounted future reward)
+    #             if done[i]:
+    #                 true_value = reward[i]
+    #             else:
+    #                 true_value = reward[i] + gamma * self.agent.estimate_value(next_state[i])
+
+    #             # Compute the bootstrap value
+    #             bootstrap_value = reward[i] + gamma * self.agent.estimate_value(next_state[i]) * (1 - done[i])
+
+    #             # Store the experience
+    #             states.append(self.state[mode][i])
+    #             actions.append(action[i])
+    #             rewards.append(reward[i])
+    #             next_states.append(next_state[i])
+    #             dones.append(done[i])
+    #             true_values.append(true_value)
+    #             bootstrap_values.append(bootstrap_value)
+
+    #         # Update the current state
+    #         self.state[mode] = self.FloatTensor(next_state).to(self.device)
+    #     return np.array(states), np.array(actions), np.array(rewards), np.array(next_states), np.array(dones), np.array(true_values), np.array(bootstrap_values)
+
+
+    def get_batch(self, mode:str="Progress"):
         states, actions, rewards, dones = [], [], [], []
         for _ in range(self.batch_size):
-            
-            # the kb column should watch the active column play
             action = self.model_dict[mode].act(self.state[mode])
             next_state, reward, done, info = self.env_dict[mode].step(action)
-            self.cumulative_rewards += reward[:,1]
+            self.cumulative_rewards += reward
             
             states.append(self.state[mode])
             actions.append(action)
-            rewards.append(reward[:,0])
+            rewards.append(reward)
             dones.append(done)
-            
+
             # Check if any of the environments are done
             for i, terminal in enumerate(done):
                 if terminal:
+                    #final_state = info[i]['terminal_observation']  # Use terminal_observation as the final state
                     self.data[mode].append(self.cumulative_rewards[i])
-                    print(f"Cumulative reward for environment {self.env_name}-{i}: {self.cumulative_rewards[i]}; Episodes: {len(self.data[mode])}")
-                    wandb.log({f"Training Score {mode}-{self.env_name}": np.mean(self.data[mode][-100:])}, commit=False)
+                    avg_data = np.mean(self.data[mode][-100:])
+                    print(f"Cumulative reward for environment {self.env_name}-{i}: {avg_data}; Episodes: {len(self.data[mode])}")
+                    wandb.log({f"Training Score {mode}-{self.env_name}": avg_data, "Frame-#":info[i]["frame_number"]}, commit=False)
                     self.cumulative_rewards[i] = 0  # Reset the cumulative reward for this environment
-                else:
-                    self.state[mode] = self.FloatTensor(next_state).to(self.device)
-                
-                
-        # permute the shapes into (process, batch_size)
-        # states = torch.stack(states).permute(1, 0, 2, 3, 4)
-        # actions = torch.stack(actions).permute(1, 0)
-        # dones = torch.from_numpy(np.stack(dones)).permute(1, 0)
-        # rewards = torch.from_numpy(np.stack(rewards)).permute(1, 0)
-        
+            
+            # get next obs, init observation is set automatically
+            self.state[mode] = self.FloatTensor(next_state).to(self.device)
+            
         states = torch.stack(states).permute(0, 1, 2, 3, 4)
         actions = torch.stack(actions).permute(0, 1)
         dones = torch.from_numpy(np.stack(dones)).permute(0, 1)
         rewards = torch.from_numpy(np.stack(rewards)).permute(0, 1)
-        
-        #print(states.shape, actions.shape, dones.shape, rewards.shape)
-        
-        
+
         values = self._compute_true_values(states, rewards, dones, mode=mode)
         return states, actions, values, self.data
 
@@ -115,8 +161,6 @@ class Worker(object):
         dones = dones.bool().to(self.device)
         states = states.to(self.device)
         
-        print(states[-1].shape)
-
         # Get bootstrap values
         next_values = torch.where(
             dones[-1],
