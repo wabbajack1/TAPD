@@ -69,11 +69,6 @@ def main(args):
     
     # create agent
     agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume=False)
-    
-    ############### RUN ONLY ACTIVE COLUMN AND ONE TASK (FOR TESTING) ###############
-    '''agent.create_worker_parallel(environments[0])
-    agent.progress_training(max_frames)'''
-    #################################################################################
 
     ###################### start progress and compress algo #########################
     # load agent if required crash and continue training
@@ -83,20 +78,6 @@ def main(args):
     #     print("Load unsuccessful!")
    
     progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate_nmb, seed=wandb.config["seed"])
-
-    # initial_state_dict = copy.deepcopy(agent.progNet.model_b.state_dict())
-    # print(evaluate(agent.progNet.model_b, "StarGunnerNoFrameskip-v4", agent.device, None, num_episodes=10))
-    # #agent.progNet.model_b.reinit_parameters(wandb.config["seed"])
-    # set_seed(44)
-    # agent.progNet.model_b.load_state_dict(initial_state_dict)
-    # print(evaluate(agent.progNet.model_b, "StarGunnerNoFrameskip-v4", agent.device, None, num_episodes=10))
-
-    # agent.load_active("/home/kidimerek/Documents/Studium/Thesis/agnostic_rl-main/checkpoints/2023-06-01T14-48-21", 100_000)
-
-    # for env_name_eval in environments:
-    #     evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
-    #     print(f"Frame: {frame_idx}, Evaluation score: {evaluation_score[1]}")
-    #     wandb.log({f"Evaluation score;{env_name_eval};{agent.progNet.model_b.__class__.__name__}": evaluation_score[1]})
         
 
 def environment_wrapper(save_dir, env_name, video_record=False):
@@ -136,12 +117,6 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                 for frame_idx in range(0, max_frames_progress, evaluation_interval):
                     print(f"############## Progress phase - to Frame: {frame_idx + evaluation_interval}")
                     agent.progress_training(evaluation_interval, offset=frame_idx)
-                    
-                    # evaluate the perforamance of the agent after the training
-                    # for env_name_eval in environments:
-                    #     evaluation_score = evaluate(agent.progNet, env_name_eval, agent.device, save_dir=save_dir)
-                    #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score[1]}")
-                    #     wandb.log({f"Evaluation score;{env_name_eval};{agent.progNet.model_b.__class__.__name__}": evaluation_score[1]})
 
             
             print(f"############## NEXT PHASE ##############")
@@ -160,10 +135,10 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     print("Distillation + EWC")
                     agent.compress_training(evaluation_interval, ewc, offset=frame_idx)
                     
-                # for env_name_eval in environments:
-                #     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
-                #     wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
+                for env_name_eval in environments:
+                    evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
+                    print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
+                    wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
             
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
@@ -219,69 +194,6 @@ def evaluate(model, env, device, save_dir, num_episodes=10):
         #evaluation_scores_original.append(episode_reward_orignal)
 
     return np.mean(evaluation_scores)#, np.mean(evaluation_scores_original)
-
-def train_PC(env_dict, max_frames, agent):
-    "Train all 5 taks using PNN"
-    
-    for task_id, env_task in env.items():
-        print(f"==================TRAIN TASK {task_id}======================\n")
-        
-        # switch grad for progress and compress phase
-        actor.unfreezeColumn(net1_actor)
-        critic.unfreezeColumn(net1_critic)
-        
-        #net.freezeColumn(kb_column)
-        #net.network_reset(kb_column)
-
-        # train the agent
-        agent.progress_training(max_frames)
-        
-        # switch grad for compress phase
-        """net.unfreezeColumn(kb_column)
-        net.freezeColumn(active_column)      
-        
-        if task_id == 0:
-            loss = train_compress_normal(actor_critic, active_column, kb_column, task_id, device, env_task, optimizer, episodes, max_steps=max_steps, mem_experience_buffer=mem_experience_buffer, log_training=logs)
-            loss_kb[task_id].append(loss)
-            #test(net, active_column, device, test_loader[task_id])
-        else:
-            old_obs = old_obs + mem_experience_buffer_prev
-            old_obs = random.sample(old_obs, k=round(len(mem_experience_buffer)/2))
-            loss_ewc = train_compress_ewc(net, old_obs, ewc_lambda, active_column, kb_column, task_id, device, env_task, optimizer, episodes, max_steps=max_steps, mem_experience_buffer=mem_experience_buffer)
-            loss_kb[task_id].append(loss_ewc)
-            
-            for i in range(task_id+1):
-                env_test = env_dict[i]
-                score = 0
-                state = stack_frames(None, env_test.reset()[0], True)
-            while True:
-                #env_test.render()
-                action_pred_logit_kb, action, log_prob_ac, _, value_ac = act(net, kb_column, state)
-                next_state, reward, done, _,_ = env_test.step(action)
-                score += reward
-                state = stack_frames(state, next_state, False)
-                if done:
-                    print("You Final score is:", score)
-                    score_kb[i].append(score)
-                    break 
-            env_test.close()
-                    
-                    
-        mem_experience_buffer_prev = mem_experience_buffer
-        
-        net.freezeColumn(kb_column)
-        net.freezeColumn(active_column)"""
-
-        """# Serializing json
-        json_kb = json.dumps(convert(score_kb), indent=4)
-        json_ac = json.dumps(convert(score_ac), indent=4)
-        
-        # Writing to sample.json
-        with open(f"/content/drive/MyDrive/Github/agnostic_rl/agent/score_kb_{ewc_lambda}.json", "w") as outfile:
-            outfile.write(f"{net}\n\n{json_kb}")
-
-        with open(f"/content/drive/MyDrive/Github/agnostic_rl/agent/score_ac_{ewc_lambda}.json", "w") as outfile:
-            outfile.write(f"{net}\n\n{json_ac}")"""
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
