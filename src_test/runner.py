@@ -172,7 +172,6 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
 
 def evaluate(model, env, device, save_dir, num_episodes=10):
     env = environment_wrapper(save_dir, env_name=env, video_record=False)
-    #print(f"Evaluate: {env.spec.id} with model {model.__class__.__name__}")
     
     evaluation_scores = []
     evaluation_scores_original = []
