@@ -141,7 +141,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
                     
                     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
-                    wandb.log({f"Evaluation score-{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score, "Frame-# Evaluation": frame_number_eval[env_name_eval]})
+                    wandb.log({f"Evaluation score-{env_name_eval}-{agent.kb_model.__class__.__name__}": evaluation_score, "Frame-# Evaluation": frame_number_eval[env_name_eval]})
             
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
@@ -195,11 +195,11 @@ def evaluate(model, env_name, device, save_dir, num_episodes=10):
             episode_reward += reward
             state = next_state
             
-            if env_name not in frame_number_eval:
-                frame_number_eval[env_name] = 0
-            else:
-                frame_number_eval[env_name] += info["episode_frame_number"]
-
+        if env_name not in frame_number_eval:
+            frame_number_eval[env_name] = 0
+        else:
+            frame_number_eval[env_name] += info["episode_frame_number"]
+            
         evaluation_scores.append(episode_reward)
 
     return np.mean(evaluation_scores)#, np.mean(evaluation_scores_original)
