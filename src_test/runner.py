@@ -64,6 +64,7 @@ def main(args):
     no_of_workers = wandb.config["workers"]
     eps = wandb.config["epsilon"]
     evaluate_nmb = wandb.config["evaluate"]
+    batch_size_fisher = wandb.config["batch_size_fisher"]
 
     # create path for storing meta data of the agent (hyperparams, video)
     save_dir = Path("../checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -79,7 +80,7 @@ def main(args):
     # else:
     #     print("Load unsuccessful!")
    
-    progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, seed=wandb.config["seed"])      
+    progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, seed=wandb.config["seed"])      
 
 def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
     """Preprocesses the environment based on the wrappers
@@ -99,9 +100,8 @@ def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=Tru
     env = common.wrappers.wrap_pytorch(env)
     return env
 
-def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_epsiode, seed):
-    
-    visit = 3
+def progress_and_compress(agent, environments, max_frames_progress, max_frames_compress, save_dir, evaluation_epsiode, batch_size_fisher, seed):
+    visit = 3 # visit each task x times
     for i in range(visit):
 
         for env_name in environments:        
@@ -142,7 +142,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
             
             ############## calculate ewc-online to include for next compress activity ##############
             # After learning each task, update EWC
-            latest_env = environment_wrapper(save_dir=save_dir, env_name=env_name, video_record=False)
+            # latest_env = environment_wrapper(save_dir=save_dir, env_name=env_name, video_record=False)
             
             # init the first computation of the fisher, i.e. because later we compute only the running average
             # compute the fim based on the current policy, because otherwise the fim would be not a good estimate (becaue on-policy i.e. without replay buffer)
@@ -150,7 +150,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
             for _ in range(100):
                 with ThreadPoolExecutor(max_workers=len(agent.workers)) as executor:
                     # Submit tasks to the executor and collect results based on the current policy of kb knowledge
-                    futures = [executor.submit(agent.collect_batch, worker, "Compress") for worker in agent.workers]
+                    futures = [executor.submit(agent.collect_batch, worker, "Compress", batch_size_fisher) for worker in agent.workers]
                     batches = [f.result() for f in as_completed(futures)]
                     
                     for j, (states, actions, true_values, _) in enumerate(batches):
@@ -163,11 +163,11 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                             
             if agent.ewc_init:
                 # take the latest env and calculate the fisher
-                ewc = EWC(data=agent.memory, agent=agent, model=agent.kb_model, ewc_gamma=0.4, device=agent.device, env_name=env_name)
+                ewc = EWC(agent=agent, model=agent.kb_model, ewc_gamma=0.4, device=agent.device, env_name=env_name)
                 agent.ewc_init = False
             else: # else running calulaction taken the last fisher into consideration
-                ewc.update(agent, agent.kb_model, latest_env) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
-            
+                ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
+                
             # reset weights after each task
             agent.active_model.reset_weights()
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
@@ -177,13 +177,14 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
         
     print("Training completed.\n")        
 
-def evaluate(model, env_name, save_dir, num_episodes):
+def evaluate(model, env_name, save_dir, num_episodes, seed):
     
     # collect frame across all visits
     global frame_number_eval
      
     # init env but do not clip the rewards in eval phase                    
     env = environment_wrapper(save_dir, env_name=env_name, video_record=False, clip_rewards=False)
+    env.seed(seed + rank)
     
     evaluation_scores = []
     steps = 0
@@ -201,10 +202,11 @@ def evaluate(model, env_name, save_dir, num_episodes):
             state = next_state
             steps += 1
             
-        if env_name not in frame_number_eval:
-            frame_number_eval[env_name] = 0
-        else:
-            frame_number_eval[env_name] += info["episode_frame_number"]
+            if done:
+                if env_name not in frame_number_eval:
+                    frame_number_eval[env_name] = 0
+                else:
+                    frame_number_eval[env_name] += info["episode_frame_number"]
             
         evaluation_scores.append(episode_reward)
 
@@ -290,6 +292,13 @@ if __name__ == "__main__":
         type=int,
         default=10,
         help="Run test with #-of episodes; The episodes get avg over the # of episodes provided")
+    
+    parser.add_argument(
+        "-bF",
+        "--batch_size_fisher",
+        type=int,
+        default=32,
+        help="Batch size for calculating the estimate of the fisher")
     
     args = parser.parse_args()
     #mp.set_start_method('forkserver')

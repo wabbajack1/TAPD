@@ -133,7 +133,6 @@ class Agent:
             #self.progNet_optimizer.step()
             
             values_list.extend(values.tolist())
-
         return np.mean(values_list).item()
 
     def compress(self, ewc):
@@ -202,7 +201,7 @@ class Agent:
         while frame_idx < max_frames:
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress") for worker in self.workers]
+                futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
                 batches = [f.result() for f in as_completed(futures)] # nmb of workers (each worker has states, actions, true_values, ...)
             
             # iterate over each workers batch and push to memory (batches = (#-workers, states, actions, ...))
@@ -239,7 +238,7 @@ class Agent:
             # collect training data
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress") for worker in self.workers]
+                futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
                 batches = [f.result() for f in as_completed(futures)]
                 
                 for j, (states, actions, true_values) in enumerate(batches):

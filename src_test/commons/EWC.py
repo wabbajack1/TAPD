@@ -14,7 +14,7 @@ def variable(t: torch.Tensor, use_cuda=True, **kwargs):
     return Variable(t, **kwargs)
 
 class EWC(object):
-    def __init__(self, data: None, agent:None, model: nn.Module, ewc_gamma=0.4, device=None, env_name:Optional[str] = None):
+    def __init__(self, agent:None, model: nn.Module, ewc_gamma=0.4, device=None, env_name:Optional[str] = None):
         """The online ewc algo 
         Args:
             task (None): the task (in atari a env) for calculating the importance of task w.r.t the paramters
@@ -28,11 +28,10 @@ class EWC(object):
             self.FloatTensor = torch.FloatTensor
 
         self.model = model
-        self.data = data # in atari domain task == env == data
         self.device = device
         self.ewc_gamma = ewc_gamma
         self.env_name = env_name
-        self.agent = agent # we need the memory module of this object
+        self.agent = agent # we need the memory module of this object (in atari domain task == env == data)
 
         self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad}
         self.mean_params = {}
@@ -105,17 +104,17 @@ class EWC(object):
             loss += (self.fisher[n] * (p - self.mean_params[n]) ** 2).sum()
         return loss * ewc_lambda
     
-    def update(self, agent, model, new_data, env_name):
+    def update(self, agent, model, env_name):
         """Update the model, after learning the latest task. Here we calculate
         directly the FIM and also reset the mean_params.
 
         Args:
+            agent: to get the new data (experience) of the latest run from the agents memory (current policy)
             model (_type_): _description_
             new_task (_type_): _description_
         """
         self.agent = agent
         self.env_name = env_name
-        self.data = new_data
         self.params = {n: p for n, p in model.named_parameters() if p.requires_grad}
         self.fisher = self.calculate_fisher()
         for n, p in deepcopy(self.params).items():

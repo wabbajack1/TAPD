@@ -108,7 +108,6 @@ class KB_Module(nn.Module):
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
         x4 = x3.view(x3.size(0), -1)
-        print(x4.shape)
 
         critic_output = self.critic(x4)
         actor_output = self.actor(x4)
