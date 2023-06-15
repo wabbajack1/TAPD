@@ -4,6 +4,7 @@ import common.wrappers
 import numpy as np
 import wandb
 import torch
+from typing import Optional
 
 # keep track of the number of frames
 frame_number = {}
@@ -48,51 +49,55 @@ class Worker(object):
         self.episode_reward["Compress"] = 0
         self.episode_reward_orginal = 0
         
-    def get_batch(self, mode:str="Progress", capture:bool=True):
-        """Collect rollout for the dataloader
-
+    def get_batch(self, mode:Optional[str]="Progress", batch_size:Optional[int]=None):
+        """Create rollout for update of parameters. This method is called after each training step. Its is strongly
+        dependent on the memory/memory.py module, which stores the experience for further batch creation via dataloader
+        during training.
+        
+        Args:
+            mode (Optional[str], optional): Switch between models,. Defaults to "Progress"
         Returns:
-            states, actions, values
+            tuple: (states, actions, values, info["frame_number"]). info["frame_number"] is optional
         """
         global frame_number
         global curren_frame_number
         
         states, actions, rewards, dones = [], [], [], []
-        for _ in range(self.batch_size):
-            #print("-->", self.state[mode].shape)
-            # the kb column should watch the active column play
+        
+        # treat batchsize differently during modes (in progress mode == rl setting, in compress+ewc mode == more supervised learning)
+        self.batch_size_mode = self.batch_size if mode == "Progress" else batch_size
+        
+        for _ in range(self.batch_size_mode):
             action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
             next_state, reward, done, info = self.env_dict[mode].step(action)
             self.episode_reward[mode] += reward
-            #self.episode_reward_orginal += reward[1]
             
             states.append(self.state[mode]) 
             actions.append(action)
             rewards.append(reward)
             dones.append(done)
             curren_frame_number.append(info["episode_frame_number"])
-            
                     
             if done:
-                if self.env_name not in frame_number.keys():
-                    frame_number[self.env_name] = 0
+                if mode not in frame_number.keys():
+                    frame_number[mode] = {}
+                    frame_number[mode][self.env_name]= 0 
+                else:
+                    frame_number[mode][self.env_name] += max(curren_frame_number)
                     
-                frame_number[self.env_name] += max(curren_frame_number)
                 self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device)
                 self.data[mode].append(self.episode_reward[mode])
                 print(f"Mode {mode}: Worker {self.id} in episode {len(self.data[mode])} Average Score: {np.mean(self.data[mode][-100:])}")
-                wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), "Frame-#":frame_number[self.env_name]}, commit=False)
+                wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), f"Frame-# Training {self.env_dict[mode].spec.id}":frame_number[mode][self.env_name]}, commit=False)
                 self.episode_reward[mode] = 0
                 curren_frame_number = []
-               # self.episode_reward_orginal = 0
             else:
                 self.state[mode] = self.FloatTensor(next_state).to(self.device)
             
                 
         values = self._compute_true_values(states, rewards, dones, mode=mode).unsqueeze(1)
-        return states, actions, values, info["frame_number"]
-
-    
+        return states, actions, values
+ 
     def _compute_true_values(self, states, rewards, dones, mode):
         """Compute the True values (discounted return) but use value
         estimate of the model for predicition and bootstrapping.

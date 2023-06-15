@@ -108,6 +108,7 @@ class KB_Module(nn.Module):
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
         x4 = x3.view(x3.size(0), -1)
+        print(x4.shape)
 
         critic_output = self.critic(x4)
         actor_output = self.actor(x4)
@@ -163,8 +164,6 @@ class KB_Module(nn.Module):
         for param in self.parameters():
             param.requires_grad = True
 
-
-
 class Active_Module(nn.Module):
     def __init__(self, device, lateral_connections:bool()=False):
         """
@@ -209,7 +208,6 @@ class Active_Module(nn.Module):
         )
         
         self.adaptor = Adaptor(feature_size) # init adaptor layers like in prognet
-
 
     def reinit_parameters(self, seed=None):
         """
@@ -258,7 +256,7 @@ class Active_Module(nn.Module):
         for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 m.reset_parameters()
-                #print("--->", name, m)
+                print("--->", name, m)
 
     def forward(self, x, previous_out_layers=None):
 
@@ -297,7 +295,6 @@ class Active_Module(nn.Module):
 
         return critic_output, actor_output
             
-
     def get_critic(self, x):
         with torch.no_grad():
             critic_output, _ = self.forward(x)
@@ -342,7 +339,6 @@ class Active_Module(nn.Module):
         for param in self.parameters():
             param.requires_grad = True
 
-
 class Adaptor(nn.Module):
     """_summary_ new
 
@@ -354,8 +350,12 @@ class Adaptor(nn.Module):
         self.conv1_adaptor = nn.Conv2d(32, 32, kernel_size=1)
         self.conv2_adaptor = nn.Conv2d(64, 64, kernel_size=1)
         self.conv3_adaptor = nn.Conv2d(64, 64, kernel_size=1)
-        self.critic_adaptor = nn.Linear(feature_size, 512)
-        self.actor_adaptor = nn.Linear(feature_size, 512)
+        self.critic_adaptor = nn.Sequential(
+            nn.Linear(feature_size, 512),
+            nn.ReLU())
+        self.actor_adaptor = nn.Sequential(
+            nn.Linear(feature_size, 512),
+            nn.ReLU())
 
     def forward(self, x1, x2, x3, x4):
         y1 = self.conv1_adaptor(x1)
@@ -364,7 +364,6 @@ class Adaptor(nn.Module):
         y4 = self.critic_adaptor(x4)
         y5 = self.actor_adaptor(x4)
         return y1, y2, y3, y4, y5
-
 
 class ICM(nn.Module):
     def __init__(self, state_dim, action_dim, forward_hidden_dim):

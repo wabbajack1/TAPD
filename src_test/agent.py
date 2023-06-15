@@ -64,8 +64,8 @@ class Agent:
         self.progNet_optimizer = torch.optim.RMSprop(self.progNet.parameters(), lr=self.lr, eps=eps)
 
     @staticmethod
-    def collect_batch(worker, mode, capture):
-        return worker.get_batch(mode, capture)
+    def collect_batch(worker, mode, batch_size):
+        return worker.get_batch(mode, batch_size)
     
     def create_worker(self, i, env_name):
         worker = Worker(env_name, {"Progress": self.progNet, "Compress": self.kb_model}, self.batch_size, self.gamma, self.device, i)
@@ -189,7 +189,7 @@ class Agent:
             
         return np.mean(values_list_kb).item(), np.mean(values_list_ac).item(), (total_kl_loss / len(dataloader))
 
-    def progress_training(self, max_frames, offset):
+    def progress_training(self, max_frames):
         frame_idx = 0
         data_value = []
         data_rewards = []
@@ -202,11 +202,11 @@ class Agent:
         while frame_idx < max_frames:
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress", True) for worker in self.workers]
+                futures = [executor.submit(self.collect_batch, worker, "Progress") for worker in self.workers]
                 batches = [f.result() for f in as_completed(futures)] # nmb of workers (each worker has states, actions, true_values, ...)
             
             # iterate over each workers batch and push to memory (batches = (#-workers, states, actions, ...))
-            for j, (states, actions, true_values, env_frame_info) in enumerate(batches):
+            for j, (states, actions, true_values) in enumerate(batches):
                 for i, _ in enumerate(states):
                     self.memory.push(
                         states[i],
@@ -215,18 +215,18 @@ class Agent:
                     )
 
             frame_idx += self.batch_size * len(self.workers)
-            value = self.progress()
+            value = self.progress() # train
             data_value.append(value)
-            wandb.log({"Critic value": np.mean(data_value[-100:])})
+            wandb.log({"Critic value": np.mean(data_value[-100:]), "Steps Progress": frame_idx})
             updates += 1
             
             # save active model weights and optimizer status every 100_000 frames
             if (frame_idx - last_saved_frame_idx) >= 100_000:
-                print(f"Save Active in Frame-#: {frame_idx+offset}\n")
-                self.save_active(frame_idx+offset)
+                print(f"Save Active in Frame-#: {frame_idx}\n")
+                self.save_active(frame_idx)
                 last_saved_frame_idx = frame_idx
 
-    def compress_training(self, max_frames, ewc, offset):
+    def compress_training(self, max_frames, ewc):
         frame_idx = 0
         last_saved_frame_idx = 0
         data_value_kb = []
@@ -236,14 +236,13 @@ class Agent:
         self.kb_model.unfreeze_parameters()  
         
         while frame_idx < max_frames:
-            
             # collect training data
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress", False) for worker in self.workers]
+                futures = [executor.submit(self.collect_batch, worker, "Progress") for worker in self.workers]
                 batches = [f.result() for f in as_completed(futures)]
                 
-                for j, (states, actions, true_values, _) in enumerate(batches):
+                for j, (states, actions, true_values) in enumerate(batches):
                     for i, _ in enumerate(states):
                         self.memory.push(
                             states[i],
@@ -252,23 +251,16 @@ class Agent:
                         )
             
             frame_idx += self.batch_size * len(self.workers)
-            value_kb, value_ac, loss = self.compress(ewc)
+            value_kb, value_ac, loss = self.compress(ewc) # train
             data_value_kb.append(value_kb)
             data_value_ac.append(value_ac)
             #print(f"Distillation loss: {loss}")
-            wandb.log({"Distillation loss": loss, "Compress Value KB": np.mean(data_value_kb[-100:]), "Compress Value AC": np.mean(data_value_ac[-100:])})
-            
-            
-            # # Only for: collect rewards from kb and log it (not training data!)
-            # with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
-            #     # Submit tasks to the executor and collect results
-            #     futures = [executor.submit(self.collect_batch, worker, "Compress") for worker in self.workers]
-            #     _ = [f.result() for f in as_completed(futures)]
+            wandb.log({"Distillation loss": loss, "Compress Value KB": np.mean(data_value_kb[-100:]), "Compress Value AC": np.mean(data_value_ac[-100:]), "Steps Compress": frame_idx})
                 
             # save active model weights and optimizer status every 100_000 frames
             if (frame_idx - last_saved_frame_idx) >= 100_000:
-                print(f"Save KB in Frame-#: {frame_idx+offset}\n")
-                self.save_kb(frame_idx+offset)
+                print(f"Save KB in Frame-#: {frame_idx}\n")
+                self.save_kb(frame_idx)
                 last_saved_frame_idx = frame_idx
 
     def save_active(self, step):
