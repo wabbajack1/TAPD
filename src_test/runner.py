@@ -141,12 +141,9 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
                     
                     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
-                    wandb.log({f"Evaluation score-{env_name_eval}-{agent.kb_model.__class__.__name__}": evaluation_score, "Frame-# Evaluation": frame_number_eval[env_name_eval]})
+                    wandb.log({f"Evaluation score-{env_name_eval}-{agent.kb_model.__class__.__name__}": evaluation_score, "Frame-# Evaluation": frame_number_eval[env_name_eval]})      
             
-            #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
-            agent.active_model.lateral_connections = True
-            agent.resume = False                
-            
+            ############## calculate ewc-online to include for next compress activity ##############
             # After learning each task, update EWC
             latest_env = environment_wrapper(save_dir=save_dir, env_name=env_name, video_record=False)
             
@@ -161,6 +158,9 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
             
             # reset weights after each task
             agent.active_model.reset_weights()
+            #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
+            agent.active_model.lateral_connections = True
+            agent.resume = False          
             print(f"############## VISIT - {i} ################ END OF TASK - {env_name}##############################\n")
         
     print("Training completed.\n")
