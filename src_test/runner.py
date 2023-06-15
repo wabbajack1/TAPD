@@ -19,11 +19,13 @@ import copy
 import os
 from commons.model import weight_reset, init_weights
 
-# os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
-# os.environ['CUDA_VISIBLE_DEVICES']='1'
-os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
-
 print(f"Torch version: {torch.__version__}")
+
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
+os.environ['CUDA_VISIBLE_DEVICES']='1'
+os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
+frame_number_eval = {}
+
 
 def set_seed(seed: int = 44) -> None:
     np.random.seed(seed)
@@ -80,7 +82,7 @@ def main(args):
     progress_and_compress(agent=agent, environments=environments, max_frames_progress=max_frames_progress, max_frames_compress=max_frames_compress, save_dir=save_dir, evaluation_interval=evaluate_nmb, seed=wandb.config["seed"])
         
 
-def environment_wrapper(save_dir, env_name, video_record=False):
+def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
     """Preprocesses the environment based on the wrappers
 
     Args:
@@ -91,7 +93,7 @@ def environment_wrapper(save_dir, env_name, video_record=False):
     """
 
     env = common.wrappers.make_atari(env_name, full_action_space=True)
-    env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True) 
+    env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=clip_rewards) 
     if video_record:
         path = (save_dir / "video" / "vid.mp4")
         env = gym.wrappers.Monitor(env, path, force=True, video_callable=lambda episode_id: True)
@@ -135,10 +137,11 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
                     print("Distillation + EWC")
                     agent.compress_training(evaluation_interval, ewc, offset=frame_idx)
                     
-                # for env_name_eval in environments:
-                #     evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
-                #     print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
-                #     wandb.log({f"Evaluation score;{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score})
+                for env_name_eval in environments:
+                    evaluation_score = evaluate(agent.kb_model, env_name_eval, agent.device, save_dir=save_dir)
+                    
+                    print(f"Frame: {frame_idx + evaluation_interval}, Evaluation score: {evaluation_score}")
+                    wandb.log({f"Evaluation score-{env_name_eval};{agent.kb_model.__class__.__name__}": evaluation_score, "Frame-# Evaluation": frame_number_eval[env_name_eval]})
             
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
@@ -151,7 +154,7 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
             # compute the fim based on the current policy, because otherwise the fim would be not a good estimate (online learn i.e. without replay buffer)
             if agent.ewc_init:
                 # take the latest env and calculate the fisher
-                ewc = EWC(task=latest_env, model=agent.kb_model, num_samples=1, ewc_gamma=0.65, device=agent.device)
+                ewc = EWC(task=latest_env, model=agent.kb_model, num_samples=3200, ewc_gamma=0.65, device=agent.device)
                 agent.ewc_init = False
             else: # else running calulaction
                 ewc.update(agent.kb_model, latest_env) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
@@ -170,11 +173,15 @@ def progress_and_compress(agent, environments, max_frames_progress, max_frames_c
         
     print("Evaluation completed.\n")
 
-def evaluate(model, env, device, save_dir, num_episodes=10):
-    env = environment_wrapper(save_dir, env_name=env, video_record=False)
+def evaluate(model, env_name, device, save_dir, num_episodes=10):
+    
+    # collect frame across all visits
+    global frame_number_eval
+     
+    # init env but do not clip the rewards in eval phase                    
+    env = environment_wrapper(save_dir, env_name=env_name, video_record=False, clip_rewards=False)
     
     evaluation_scores = []
-    evaluation_scores_original = []
     for _ in range(num_episodes):
         state = env.reset()
         done = False
@@ -184,13 +191,16 @@ def evaluate(model, env, device, save_dir, num_episodes=10):
         while not done:
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
             action = model.act(state_tensor.to(device))
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, info = env.step(action)
             episode_reward += reward
-            #episode_reward_orignal += reward[1]
             state = next_state
+            
+            if env_name not in frame_number_eval:
+                frame_number_eval[env_name] = 0
+            else:
+                frame_number_eval[env_name] += info["episode_frame_number"]
 
         evaluation_scores.append(episode_reward)
-        #evaluation_scores_original.append(episode_reward_orignal)
 
     return np.mean(evaluation_scores)#, np.mean(evaluation_scores_original)
 

@@ -136,7 +136,6 @@ class Agent:
 
         return np.mean(values_list).item()
 
-
     def compress(self, ewc):
         criterion = torch.nn.KLDivLoss(reduction="batchmean", log_target=True)
         ewc_lambda = 150
@@ -189,7 +188,6 @@ class Agent:
             values_list_ac.extend(values_active.tolist())
             
         return np.mean(values_list_kb).item(), np.mean(values_list_ac).item(), (total_kl_loss / len(dataloader))
-
 
     def progress_training(self, max_frames, offset):
         frame_idx = 0
