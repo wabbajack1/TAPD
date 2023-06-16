@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_compl
 from pathlib import Path
 
 class Agent:
-    def __init__(self, use_cuda, lr, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, resume):
+    def __init__(self, use_cuda, lr, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, seed, resume):
         """In this implementation, we initialize the agent, which comprises various models, such as artificial neural networks (ANNs). 
         The agent features an active column, responsible for utilizing the model to accomplish specific tasks, and a knowledge base 
         column, representing the agent's memory. Through the forward model of the Intrinsic Curiosity Module (ICM), the 
@@ -34,6 +34,7 @@ class Agent:
             eps (_type_): _description_
             save_dir (_type_): _description_
         """
+        self.seed = seed
         self.lr = lr
         self.gamma = gamma
         self.entropy_coef = entropy_coef
@@ -68,7 +69,7 @@ class Agent:
         return worker.get_batch(mode, batch_size)
     
     def create_worker(self, i, env_name):
-        worker = Worker(env_name, {"Progress": self.progNet, "Compress": self.kb_model}, self.batch_size, self.gamma, self.device, i)
+        worker = Worker(env_name, {"Progress": self.progNet, "Compress": self.kb_model}, self.batch_size, self.gamma, self.device, self.seed, i)
         print(f"Worker {i} created\n")
         return worker
 
@@ -188,17 +189,17 @@ class Agent:
             
         return np.mean(values_list_kb).item(), np.mean(values_list_ac).item(), (total_kl_loss / len(dataloader))
 
-    def progress_training(self, max_frames):
-        frame_idx = 0
+    def progress_training(self, max_steps):
+        steps_idx = 0
         data_value = []
         data_rewards = []
         updates = 0
-        last_saved_frame_idx = 0
+        last_saved_steps_idx = 0
         self.active_model.train()
         self.kb_model.freeze_parameters()
         self.active_model.unfreeze_parameters()
 
-        while frame_idx < max_frames:
+        while steps_idx < max_steps:
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
                 futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
@@ -212,29 +213,32 @@ class Agent:
                         actions[i],
                         true_values[i]
                     )
+                    
 
-            frame_idx += self.batch_size * len(self.workers)
+            steps_idx += self.batch_size * len(self.workers)
             value = self.progress() # train
             data_value.append(value)
-            wandb.log({"Critic value": np.mean(data_value[-100:]), "Steps Progress": frame_idx})
+            
+            wandb.log({"Critic value": np.mean(data_value[-100:]), "Steps Progress": steps_idx})
             updates += 1
             
-            # save active model weights and optimizer status every 100_000 frames
-            if (frame_idx - last_saved_frame_idx) >= 100_000:
-                print(f"Save Active in Frame-#: {frame_idx}\n")
-                self.save_active(frame_idx)
-                last_saved_frame_idx = frame_idx
+            # save active model weights and optimizer status every 100_000 steps
+            if (steps_idx - last_saved_steps_idx) >= 100_000:
+                print(f"Save Active in step-# with updated = {updates}: {steps_idx}\n")
+                self.save_active(steps_idx)
+                last_saved_steps_idx = steps_idx
 
-    def compress_training(self, max_frames, ewc):
-        frame_idx = 0
-        last_saved_frame_idx = 0
+    def compress_training(self, max_steps, ewc):
+        steps_idx = 0
+        last_saved_steps_idx = 0
+        updates = 0
         data_value_kb = []
         data_value_ac = []
         self.kb_model.train()  
         self.active_model.freeze_parameters()
-        self.kb_model.unfreeze_parameters()  
+        self.kb_model.unfreeze_parameters()
         
-        while frame_idx < max_frames:
+        while steps_idx < max_steps:
             # collect training data
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
@@ -249,18 +253,18 @@ class Agent:
                             true_values[i]
                         )
             
-            frame_idx += self.batch_size * len(self.workers)
+            steps_idx += self.batch_size * len(self.workers)
             value_kb, value_ac, loss = self.compress(ewc) # train
             data_value_kb.append(value_kb)
             data_value_ac.append(value_ac)
-            #print(f"Distillation loss: {loss}")
-            wandb.log({"Distillation loss": loss, "Compress Value KB": np.mean(data_value_kb[-100:]), "Compress Value AC": np.mean(data_value_ac[-100:]), "Steps Compress": frame_idx})
-                
-            # save active model weights and optimizer status every 100_000 frames
-            if (frame_idx - last_saved_frame_idx) >= 100_000:
-                print(f"Save KB in Frame-#: {frame_idx}\n")
-                self.save_kb(frame_idx)
-                last_saved_frame_idx = frame_idx
+            wandb.log({"Distillation loss": loss, "Compress Value KB": np.mean(data_value_kb[-100:]), "Compress Value AC": np.mean(data_value_ac[-100:]), "Steps Compress": steps_idx})
+            updates += 1
+            
+            # save active model weights and optimizer status every 100_000 steps
+            if (steps_idx - last_saved_steps_idx) >= 100_000:
+                print(f"Save KB in step-# with updated = {updates}: {steps_idx}\n")
+                self.save_kb(steps_idx)
+                last_saved_steps_idx = steps_idx
 
     def save_active(self, step):
         """step + self.inc_active = the last digit adds the step size to the step size

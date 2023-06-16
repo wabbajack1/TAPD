@@ -8,7 +8,7 @@ from typing import Optional
 
 # keep track of the number of frames
 frame_number = {}
-curren_frame_number = []
+current_frame_list = []
 
 class Worker(object):
     """The worker is the one which interacts with the env and collects
@@ -16,14 +16,16 @@ class Worker(object):
     Here self.env instanace gets created in each thread, which means same envrinment as a copy in different threads.
     """
 
-    def __init__(self, env_name, model_dict, batch_size, gamma, device, id):        
+    def __init__(self, env_name, model_dict, batch_size, gamma, device, seed, rank):        
         self.device = device
         self.env_name = env_name
+        self.rank = rank
 
         self.FloatTensor = torch.FloatTensor
         env = common.wrappers.make_atari(env_name, full_action_space=True)
         env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True)
         env = common.wrappers.wrap_pytorch(env)
+        env.seed(rank+seed-1)
         
         self.env_dict = {}
         self.env_dict["Progress"] = env
@@ -36,7 +38,6 @@ class Worker(object):
         self.model_dict = model_dict
         self.batch_size = batch_size
         self.gamma = gamma
-        self.id = id
 
 
         # store data for each task
@@ -60,41 +61,43 @@ class Worker(object):
             tuple: (states, actions, values, info["frame_number"]). info["frame_number"] is optional
         """
         global frame_number
-        global curren_frame_number
+        global current_frame_list
         
         states, actions, rewards, dones = [], [], [], []
         
         # treat batchsize differently during modes (in progress mode == rl setting, in compress+ewc mode == more supervised learning)
         self.batch_size_mode = self.batch_size if mode == "Progress" else batch_size
         
-        for _ in range(self.batch_size_mode):
+        for collect in range(self.batch_size_mode):
+            #print("Process", self.rank)
             action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
             next_state, reward, done, info = self.env_dict[mode].step(action)
             self.episode_reward[mode] += reward
-            
             states.append(self.state[mode]) 
             actions.append(action)
             rewards.append(reward)
             dones.append(done)
-            curren_frame_number.append(info["episode_frame_number"])
                     
             if done:
                 if mode not in frame_number.keys():
                     frame_number[mode] = {}
-                    frame_number[mode][self.env_name]= 0 
+                    frame_number[mode][self.env_name]= 0
+                    frame_number[mode][self.env_name] += info['episode_frame_number']
                 else:
-                    frame_number[mode][self.env_name] += max(curren_frame_number)
+                    frame_number[mode][self.env_name] += info['episode_frame_number'] # each info is accociated with one thread
+                #print("------------------------>", self.rank, frame_number[mode][self.env_name])
                     
                 self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device)
                 self.data[mode].append(self.episode_reward[mode])
-                print(f"Mode {mode}: Worker {self.id} in episode {len(self.data[mode])} Average Score: {np.mean(self.data[mode][-100:])}")
+                print(f"Mode {mode}: Worker {self.rank} in episode {len(self.data[mode])} Average Score: {np.mean(self.data[mode][-100:])} Total frames across threads {frame_number[mode][self.env_name]}")
                 wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), f"Frame-# Training {self.env_dict[mode].spec.id}":frame_number[mode][self.env_name]}, commit=False)
                 self.episode_reward[mode] = 0
-                curren_frame_number = []
+                current_frame_list = []
             else:
                 self.state[mode] = self.FloatTensor(next_state).to(self.device)
             
-                
+            #print(f"Process end {collect}, Rank {self.rank}, frame {info}")
+                    
         values = self._compute_true_values(states, rewards, dones, mode=mode).unsqueeze(1)
         return states, actions, values
  
