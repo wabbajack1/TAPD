@@ -119,7 +119,7 @@ class Agent:
             #print(values.shape, log_probs.shape, entropy.shape, batch_true_values.shape, entropy)
             
             advantages = batch_true_values - values
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+            #advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
             critic_loss = advantages.pow(2).mean()
             
             actor_loss = -(log_probs * advantages.detach()).mean()

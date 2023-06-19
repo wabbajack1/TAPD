@@ -5,10 +5,11 @@ import numpy as np
 import wandb
 import torch
 from typing import Optional
+from copy import deepcopy
 
 # keep track of the number of frames
 frame_number = {}
-current_frame_list = []
+episode_number = {}
 
 class Worker(object):
     """The worker is the one which interacts with the env and collects
@@ -61,13 +62,12 @@ class Worker(object):
             tuple: (states, actions, values, info["frame_number"]). info["frame_number"] is optional
         """
         global frame_number
-        global current_frame_list
         
         states, actions, rewards, dones = [], [], [], []
         
         # treat batchsize differently during modes (in progress mode == rl setting, in compress+ewc mode == more supervised learning)
         self.batch_size_mode = self.batch_size if mode == "Progress" else batch_size
-        
+
         for collect in range(self.batch_size_mode):
             #print("Process", self.rank)
             action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
@@ -79,25 +79,22 @@ class Worker(object):
             dones.append(done)
                     
             if done:
-                if mode not in frame_number.keys():
-                    frame_number[mode] = {}
-                    frame_number[mode][self.env_name]= 0
-                    frame_number[mode][self.env_name] += info['episode_frame_number']
-                else:
-                    frame_number[mode][self.env_name] += info['episode_frame_number'] # each info is accociated with one thread
+                frame_number.setdefault(mode, {}).setdefault(self.env_name, 0)
+                episode_number.setdefault(mode, {}).setdefault(self.env_name, 0)
+                frame_number[mode][self.env_name] += info['episode_frame_number'] # each info is accociated with one thread
+                episode_number[mode][self.env_name] += 1
                 #print("------------------------>", self.rank, frame_number[mode][self.env_name])
                     
                 self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device)
                 self.data[mode].append(self.episode_reward[mode])
-                print(f"Mode {mode}: Worker {self.rank} in episode {len(self.data[mode])} Average Score: {np.mean(self.data[mode][-100:])} Total frames across threads {frame_number[mode][self.env_name]}")
+                print(f"Mode {mode} -- Worker {self.rank} in episode {episode_number[mode][self.env_name]} -- Average Score: {np.mean(self.data[mode][-100:])} -- Total frames across threads: {frame_number[mode][self.env_name]}")
                 wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), f"Frame-# Training {self.env_dict[mode].spec.id}":frame_number[mode][self.env_name]}, commit=False)
                 self.episode_reward[mode] = 0
-                current_frame_list = []
             else:
                 self.state[mode] = self.FloatTensor(next_state).to(self.device)
             
             #print(f"Process end {collect}, Rank {self.rank}, frame {info}")
-                    
+                
         values = self._compute_true_values(states, rewards, dones, mode=mode).unsqueeze(1)
         return states, actions, values
  

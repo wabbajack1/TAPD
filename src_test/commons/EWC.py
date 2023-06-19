@@ -43,10 +43,9 @@ class EWC(object):
             
     def calculate_fisher(self):
         print(f"Calculation of the task for the importance of each parameter: {self.env_name}")
-        
         self.model.eval()
-        fisher = {}
         
+        fisher = {}
         for n, p in deepcopy(self.params).items():
             p.data.zero_()
             fisher[n] = variable(p.data)
@@ -54,24 +53,29 @@ class EWC(object):
         states, actions, true_values = self.agent.memory.pop_all()
         self.agent.memory.delete_memory()
         dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=self.agent.batch_size, shuffle=False)
+        dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
         
-        state = self.FloatTensor(self.task.reset()).to(self.device)
         for batch_states, batch_actions, batch_true_values in dataloader:
+            #print(len(dataset), len(dataloader), batch_states.shape)
+            
             # Calculate gradients
             self.model.zero_grad()
             
             batch_states = batch_states.to(self.device)
             batch_actions = batch_actions.to(self.device)
+            values, log_probs, entropy = self.model.evaluate_action(batch_states, batch_actions)
             
+            values = torch.squeeze(values)
+            log_probs = torch.squeeze(log_probs)
+            entropy = torch.squeeze(entropy)
+            batch_true_values = torch.squeeze(batch_true_values)
             
-            action = self.model.act(state.unsqueeze(0).to(self.device))
-            next_state, reward, done, _ = self.task.step(action)
-            value, log_probs, entropy = self.model.evaluate_action(state.unsqueeze(0).to(self.device), torch.tensor(action).to(self.device))
-
-            loss = -log_probs * entropy
-            loss.backward() # calc the gradients and store it in grad
-
+            advantages = batch_true_values - values
+            critic_loss = advantages.pow(2).mean()
+            
+            actor_loss = -(log_probs * advantages.detach()).mean()
+            actor_loss.backward() # calc the gradients and store it in grad
+            
             # Update Fisher information matrix
             for name, param in self.model.named_parameters():
                 if param.grad is not None:
@@ -79,12 +83,9 @@ class EWC(object):
                         fisher[name] += self.ewc_gamma * self.old_fisher[name] + (1 - self.ewc_gamma) * (param.grad.data.clone() ** 2)
                     else:
                         fisher[name] += param.grad.data.clone() ** 2
-
-
-            state = self.FloatTensor(next_state).to(self.device)
-            
+        
         for name in fisher:
-            fisher[name] /= num_samples
+            fisher[name] /= len(dataloader)
 
         self.old_fisher = fisher.copy()
         return fisher
