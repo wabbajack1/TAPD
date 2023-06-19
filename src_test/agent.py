@@ -224,7 +224,7 @@ class Agent:
             
             # save active model weights and optimizer status every 100_000 steps
             if (steps_idx - last_saved_steps_idx) >= 100_000:
-                print(f"Save Active in step-# with updated = {updates}: {steps_idx}\n")
+                print(f"Save Active in step-# with updates = {updates}: {steps_idx}\n")
                 self.save_active(steps_idx)
                 last_saved_steps_idx = steps_idx
 
@@ -262,7 +262,7 @@ class Agent:
             
             # save active model weights and optimizer status every 100_000 steps
             if (steps_idx - last_saved_steps_idx) >= 100_000:
-                print(f"Save KB in step-# with updated = {updates}: {steps_idx}\n")
+                print(f"Save KB in step-# with updates = {updates}: {steps_idx}\n")
                 self.save_kb(steps_idx)
                 last_saved_steps_idx = steps_idx
 
