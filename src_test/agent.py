@@ -214,7 +214,6 @@ class Agent:
                         true_values[i]
                     )
                     
-
             steps_idx += self.batch_size * len(self.workers)
             value = self.progress() # train
             data_value.append(value)
