@@ -25,6 +25,7 @@ print(f"Torch version: {torch.__version__}")
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
+os.environ['WANDB_MODE'] = 'online'
 frame_number_eval = {}
 steps = {}
 
@@ -172,10 +173,10 @@ def progress_and_compress(agent, environments, max_steps_progress, max_steps_com
                 ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
                 
             # reset weights after each task
-            agent.active_model.reset_weights()
+            agent.active_model.reset_weights() 
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
-            agent.resume = False          
+            agent.resume = False
             print(f"############## VISIT - {visit} ################ END OF TASK - {env_name}##############################\n")
         
     print("Training completed.\n")        

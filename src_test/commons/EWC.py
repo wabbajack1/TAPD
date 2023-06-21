@@ -63,6 +63,7 @@ class EWC(object):
             
             batch_states = batch_states.to(self.device)
             batch_actions = batch_actions.to(self.device)
+            batch_true_values = batch_true_values.to(self.device)
             values, log_probs, entropy = self.model.evaluate_action(batch_states, batch_actions)
             
             values = torch.squeeze(values)
