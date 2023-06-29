@@ -69,7 +69,6 @@ class Worker(object):
         self.batch_size_mode = self.batch_size if mode == "Progress" else batch_size
 
         for collect in range(self.batch_size_mode):
-            #print("Process", self.rank)
             action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
             next_state, reward, done, info = self.env_dict[mode].step(action)
             self.episode_reward[mode] += reward
@@ -81,10 +80,11 @@ class Worker(object):
             if done:
                 frame_number.setdefault(mode, {}).setdefault(self.env_name, 0)
                 episode_number.setdefault(mode, {}).setdefault(self.env_name, 0)
-                frame_number[mode][self.env_name] += info['episode_frame_number'] # each info is accociated with one thread
-                episode_number[mode][self.env_name] += 1
-                #print("------------------------>", self.rank, frame_number[mode][self.env_name])
-                    
+                
+                if self.env_dict[mode].was_real_done:
+                    frame_number[mode][self.env_name] += info['episode_frame_number'] # each info is accociated with one thread
+                    episode_number[mode][self.env_name] += 1          
+                  
                 self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device)
                 self.data[mode].append(self.episode_reward[mode])
                 print(f"Mode {mode} -- Worker {self.rank} in episode {episode_number[mode][self.env_name]} -- Average Score: {np.mean(self.data[mode][-100:])} -- Total frames across threads: {frame_number[mode][self.env_name]}")
@@ -93,8 +93,7 @@ class Worker(object):
             else:
                 self.state[mode] = self.FloatTensor(next_state).to(self.device)
             
-            #print(f"Process end {collect}, Rank {self.rank}, frame {info}")
-                
+            #print(f"Process end {collect}, Rank {self.rank}, frame {info}")    
         values = self._compute_true_values(states, rewards, dones, mode=mode).unsqueeze(1)
         return states, actions, values
  

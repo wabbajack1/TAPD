@@ -208,38 +208,8 @@ class Active_Module(nn.Module):
         
         self.adaptor = Adaptor(feature_size) # init adaptor layers like in prognet
 
-    def reinit_parameters(self, seed=None):
-        """
-        Reinitialize the parameters of the model. If a seed is given, use it to generate a deterministic initialization.
-
-        :param seed: Seed for the random number generator
-        """
-        if seed is not None:
-            np.random.seed(seed)
-            random.seed(seed)
-            torch.manual_seed(seed)
-            torch.cuda.manual_seed(seed)
-            # When running on the CuDNN backend, two further options must be set
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = False
-            # Set a fixed value for the hash seed
-            os.environ["PYTHONHASHSEED"] = str(seed)
-            print(f"Random seed set as {seed}\n")
-
-        def reset_module_parameters(module):
-            if hasattr(module, 'reset_parameters'):
-                module.reset_parameters()
-                print("-->", module._get_name())
-            elif isinstance(module, nn.ModuleList) or isinstance(module, nn.Sequential):
-                for sub_module in module:
-                    reset_module_parameters(sub_module)
-            else:
-                print("Warning: Encountered a layer without reset_parameters method: ", module)
-
-        for layer in [self.layer1, self.layer2, self.layer3, self.critic, self.actor]:
-            reset_module_parameters(layer)
-
     def reset_weights(self, seed=None):
+        print("===== RESET WEIGHTS =====")
         if seed is not None:
             np.random.seed(seed)
             random.seed(seed)
@@ -255,7 +225,7 @@ class Active_Module(nn.Module):
         for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 m.reset_parameters()
-                print("--->", name, m)
+                #print("--->", name, m)
 
     def forward(self, x, previous_out_layers=None):
 
@@ -390,7 +360,7 @@ class ProgressiveNet(nn.Module):
         #self.icm = ICM(state_dim, action_dim, forward_hidden_dim)
         self.icm = None
         
-        wandb.watch(self, log_freq=1, log="all")
+        wandb.watch(self, log_freq=1000, log="all", log_graph=True)
 
     def forward(self, x, action=None):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)
@@ -477,8 +447,7 @@ class ProgressiveNet(nn.Module):
                 same_values = False
                 print(f"Parameter '{name}' has changed.")
         return same_values
-
-
+    
 if __name__ == "__main__":
     import sys
     # import os

@@ -128,6 +128,7 @@ class Agent:
             self.active_optimizer.zero_grad()
             #self.progNet_optimizer.zero_grad()
             total_loss.backward()
+            #print(f"loss {total_loss}, actor_loss {actor_loss}, critic_loss {critic_loss}, entropy {entropy}")
             torch.nn.utils.clip_grad_norm_(self.active_model.parameters(), 1)
             #torch.nn.utils.clip_grad_norm_(self.progNet.parameters(), 1)
             self.active_optimizer.step()
@@ -217,15 +218,16 @@ class Agent:
             steps_idx += self.batch_size * len(self.workers)
             value = self.progress() # train
             data_value.append(value)
-            
-            wandb.log({"Critic value": np.mean(data_value[-100:]), "Steps Progress": steps_idx})
             updates += 1
             
             # save active model weights and optimizer status every 100_000 steps
-            if (steps_idx - last_saved_steps_idx) >= 100_000:
+            if (steps_idx - last_saved_steps_idx) >= 500_000:
                 print(f"Save Active in step-# with updates = {updates}: {steps_idx}\n")
                 self.save_active(steps_idx)
                 last_saved_steps_idx = steps_idx
+            
+            if steps_idx % 10000 == 0: # log every 10000 steps
+                wandb.log({"Critic value": np.mean(data_value[-100:]), "Steps Progress": steps_idx})
 
     def compress_training(self, max_steps, ewc):
         steps_idx = 0
@@ -256,14 +258,16 @@ class Agent:
             value_kb, value_ac, loss = self.compress(ewc) # train
             data_value_kb.append(value_kb)
             data_value_ac.append(value_ac)
-            wandb.log({"Distillation loss": loss, "Compress Value KB": np.mean(data_value_kb[-100:]), "Compress Value AC": np.mean(data_value_ac[-100:]), "Steps Compress": steps_idx})
             updates += 1
             
             # save active model weights and optimizer status every 100_000 steps
-            if (steps_idx - last_saved_steps_idx) >= 100_000:
+            if (steps_idx - last_saved_steps_idx) >= 500_000:
                 print(f"Save KB in step-# with updates = {updates}: {steps_idx}\n")
                 self.save_kb(steps_idx)
                 last_saved_steps_idx = steps_idx
+            
+            if steps_idx % 10000 == 0: # log every 10000 steps
+                wandb.log({"Distillation loss": loss, "Compress Value KB": np.mean(data_value_kb[-100:]), "Compress Value AC": np.mean(data_value_ac[-100:]), "Steps Compress": steps_idx})
 
     def save_active(self, step):
         """step + self.inc_active = the last digit adds the step size to the step size
@@ -285,30 +289,46 @@ class Agent:
         torch.save(dict(model=self.kb_model.state_dict(), optimizer=self.kb_optimizer.state_dict(), **self.wandb.config), save_path)
         print(f"KB net saved to {save_path}")
 
-    def load_active(self, step):
-        load_path = Path(f"../checkpoints/2023-05-23T20-03-49/active_model_{int(step)}.chkpt")
-
+    def load_active(self, load_path, load_step, mode="cpu"):
+        load_path = Path(f"{load_path}/active_model_{int(load_step)}.chkpt")
+        modified_state_dict = {}
+        
         if load_path.exists():
-            checkpoint = torch.load(load_path)
-            self.active_model.load_state_dict(checkpoint["model"])
-            self.active_optimizer.load_state_dict(checkpoint["optimizer"])
+            checkpoint = torch.load(load_path, map_location=torch.device(mode))
+            
+            for key, value in checkpoint["model"].items():
+                # Exclude or rename keys as needed
+                if key == 'adaptor.critic_adaptor.weight':
+                    modified_state_dict['adaptor.critic_adaptor.0.weight'] = value
+                elif key == 'adaptor.critic_adaptor.bias':
+                    modified_state_dict['adaptor.critic_adaptor.0.bias'] = value
+                elif key == 'adaptor.actor_adaptor.weight':
+                    modified_state_dict['adaptor.actor_adaptor.0.weight'] = value
+                elif key == 'adaptor.actor_adaptor.bias':
+                    modified_state_dict['adaptor.actor_adaptor.0.bias'] = value
+                else:
+                    modified_state_dict[key] = value
+            
+            
+            self.active_model.load_state_dict(modified_state_dict)
+            #self.active_optimizer.load_state_dict(checkpoint["optimizer"])
             
             print(f"Active net loaded from {load_path}")
             return True  # Indicate successful load
         else:
-            print(f"No active net found at {load_path}")
+            print(f"No Active net found at {load_path}")
             return False  # Indicate unsuccessful load
         
-    def load_kb(self, step):
-        load_path = Path(f"../checkpoints/2023-05-23T20-03-49/kb_model_{int(step)}.chkpt")
+    def load_kb(self, load_path, load_step):
+        load_path = Path(f"{load_path}/kb_model_{int(load_step)}.chkpt")
 
         if load_path.exists():
             checkpoint = torch.load(load_path)
             self.kb_model.load_state_dict(checkpoint["model"])
             self.kb_optimizer.load_state_dict(checkpoint["optimizer"])
             
-            print(f"Active net loaded from {load_path}")
+            print(f"KB net loaded from {load_path}")
             return True  # Indicate successful load
         else:
-            print(f"No active net found at {load_path}")
+            print(f"No KB net found at {load_path}")
             return False  # Indicate unsuccessful load

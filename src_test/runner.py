@@ -19,6 +19,7 @@ import copy
 import os
 from commons.model import weight_reset, init_weights
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from typing import Optional
 
 print(f"Torch version: {torch.__version__}")
 
@@ -52,9 +53,15 @@ def main(args):
         #id="nd07r8xn",
         #resume="allow"
     )
+    
+    # Environments for multitask
+    #environments = ["PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
+    environments = ['SpaceInvadersNoFrameskip-v4', "PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4']
+    #environments = ["PongNoFrameskip-v4", 'SpaceInvadersNoFrameskip-v4', 'StarGunnerNoFrameskip-v4', "BeamRiderNoFrameskip-v4"]
+    
+    # args
     seed = wandb.config["seed"]
     set_seed(seed)
-    environments = ["PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
     max_steps_progress = wandb.config["max_steps_progress"]
     max_steps_compress = wandb.config["max_steps_compress"]
     batch_size = wandb.config["batch_size"]
@@ -68,6 +75,9 @@ def main(args):
     batch_size_fisher = wandb.config["batch_size_fisher"]
     batch_number_fisher = wandb.config["batch_number_fisher"]
     ewcgamma = wandb.config["ewcgamma"]
+    load_step = wandb.config["load_step"]
+    load_path = wandb.config["load_path"]
+    mode = wandb.config["mode"]
 
     # create path for storing meta data of the agent (hyperparams, video)
     save_dir = Path("../checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -75,16 +85,16 @@ def main(args):
     
     # create agent
     agent = Agent(True, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, seed, resume=False)
-
+    
     ###################### start progress and compress algo #########################
-    # load agent if required crash and continue training
-    # if agent.load_active(100_000) and agent.resume:
-    #     print("Load successful!")
-    # else:
-    #     print("Load unsuccessful!")
+    if load_path is not None:
+        agent.load_active(load_path, load_step, mode)
    
-    progress_and_compress(agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, seed=seed)      
+    progress_and_compress(agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, seed=seed)
 
+    
+    
+    
 def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
     """Preprocesses the environment based on the wrappers
 
@@ -104,10 +114,10 @@ def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=Tru
     return env
 
 def progress_and_compress(agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, seed):
-    visits = 3 # visit each task x times
+    visits = 1 # visit each task x times
     for visit in range(visits):
-
-        for env_name in environments:        
+        
+        for env_name in environments:
         
             # Reinitialize workers for the new environment
             print("############## Creating workers ##############")
@@ -116,7 +126,7 @@ def progress_and_compress(agent, environments, max_steps_progress, max_steps_com
             print(f"############## Training on {env_name} ##############")
             stop_value = env_name # current env name (in continual learning setup its a task)
             
-            ############## progress activity ##############        
+            # ############## progress activity ##############        
             if agent.resume != True: # check if run chrashed if yes resume the state of training before crash
                 print(f"############## Progress phase - to step: {max_steps_progress}")
                 agent.progress_training(max_steps_progress)
@@ -135,11 +145,9 @@ def progress_and_compress(agent, environments, max_steps_progress, max_steps_com
             # eval kb after learning/training     
             print(20*"=", "Evaluation started", 20*"=")
             for env_name_eval in environments:
-                evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
+                evaluation_data = evaluate(model=agent.active_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
                 avg_score = evaluation_data
-                
-                print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Evaluation score: {avg_score}")
-                wandb.log({f"Evaluation score-{env_name_eval}-{agent.kb_model.__class__.__name__}": avg_score, "Frame-# Evaluation": frame_number_eval[env_name_eval], "Steps-# Evaluation":steps[env_name_eval]})      
+                print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
             print(20*"=","Evaluation completed", 20*"=")
             
             ############## calculate ewc-online to include for next compress activity ##############
@@ -176,7 +184,7 @@ def progress_and_compress(agent, environments, max_steps_progress, max_steps_com
             agent.active_model.reset_weights() 
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
-            agent.resume = False
+            agent.resume = False # leaf this line here!
             print(f"############## VISIT - {visit} ################ END OF TASK - {env_name}##############################\n")
         
     print("Training completed.\n")        
@@ -212,9 +220,11 @@ def evaluate(model, env_name, save_dir, num_episodes, seed):
             if done:
                 if env_name not in frame_number_eval:
                     frame_number_eval[env_name] = 0
+                    frame_number_eval[env_name] += info["episode_frame_number"]
                 else:
                     frame_number_eval[env_name] += info["episode_frame_number"]
-            
+                    
+                wandb.log({f"Evaluation score-{env_name}-{model.__class__.__name__}": episode_reward, f"Frame-# Evaluation-{env_name}": frame_number_eval[env_name], f"Steps-# Evaluation-{env_name}":steps[env_name]})
         evaluation_scores.append(episode_reward)
 
     return np.mean(evaluation_scores) #, np.mean(evaluation_scores_original)
@@ -320,6 +330,29 @@ if __name__ == "__main__":
         type=float,
         default=0.99,
         help="This is the decaying factor of the online-ewc algorithm, where ewcgamma = 1 indicates older tasks are more important than newer one")
+    
+    parser.add_argument(
+        "-load_step",
+        "--load_step",
+        type=int,
+        default=0,
+        help="From which timestep do you want to load your agent?")
+    
+    parser.add_argument(
+        "-load_path",
+        "--load_path",
+        type=str,
+        default=None,
+        help="Where is the path of your agent?")
+    
+    parser.add_argument(
+        "-mode",
+        "--mode",
+        type=str,
+        default="cpu",
+        help="When loading the agent, on which device should it run (cpu/gpu)?")
+    
+    
     
     args = parser.parse_args()
     #mp.set_start_method('forkserver')
