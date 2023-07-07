@@ -1,6 +1,20 @@
 import torch
 import wandb
 import torch.nn as nn
+import os
+import numpy as np
+import random
+
+def weight_reset(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        m.reset_parameters()
+
+def init_weights(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        print("--->")
+        nn.init.xavier_uniform_(m.weight.data)
+        if m.bias is not None:
+            nn.init.zeros_(m.bias.data)
 
 class Model(nn.Module):
     def __init__(self, action_space, env):
@@ -55,7 +69,7 @@ class Model(nn.Module):
         
         chosen_action = dist.sample()
         return chosen_action.item()
-    
+
 class KB_Module(nn.Module):
     def __init__(self, device):
         super(KB_Module, self).__init__()
@@ -142,7 +156,12 @@ class KB_Module(nn.Module):
         for param in self.parameters():
             param.requires_grad = False
 
-
+    def unfreeze_parameters(self):
+        """
+        Freeze all parameters of the model, so they won't be updated during backpropagation.
+        """
+        for param in self.parameters():
+            param.requires_grad = True
 
 class Active_Module(nn.Module):
     def __init__(self, device, lateral_connections:bool()=False):
@@ -189,6 +208,24 @@ class Active_Module(nn.Module):
         
         self.adaptor = Adaptor(feature_size) # init adaptor layers like in prognet
 
+    def reset_weights(self, seed=None):
+        print("===== RESET WEIGHTS =====")
+        if seed is not None:
+            np.random.seed(seed)
+            random.seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            # When running on the CuDNN backend, two further options must be set
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            # Set a fixed value for the hash seed
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            print(f"Random seed set as {seed}\n")
+
+        for name, m in self.named_modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                m.reset_parameters()
+                #print("--->", name, m)
 
     def forward(self, x, previous_out_layers=None):
 
@@ -227,7 +264,6 @@ class Active_Module(nn.Module):
 
         return critic_output, actor_output
             
-
     def get_critic(self, x):
         with torch.no_grad():
             critic_output, _ = self.forward(x)
@@ -265,6 +301,12 @@ class Active_Module(nn.Module):
         for param in self.parameters():
             param.requires_grad = False
 
+    def unfreeze_parameters(self):
+        """
+        Freeze all parameters of the model, so they won't be updated during backpropagation.
+        """
+        for param in self.parameters():
+            param.requires_grad = True
 
 class Adaptor(nn.Module):
     """_summary_ new
@@ -277,8 +319,12 @@ class Adaptor(nn.Module):
         self.conv1_adaptor = nn.Conv2d(32, 32, kernel_size=1)
         self.conv2_adaptor = nn.Conv2d(64, 64, kernel_size=1)
         self.conv3_adaptor = nn.Conv2d(64, 64, kernel_size=1)
-        self.critic_adaptor = nn.Linear(feature_size, 512)
-        self.actor_adaptor = nn.Linear(feature_size, 512)
+        self.critic_adaptor = nn.Sequential(
+            nn.Linear(feature_size, 512),
+            nn.ReLU())
+        self.actor_adaptor = nn.Sequential(
+            nn.Linear(feature_size, 512),
+            nn.ReLU())
 
     def forward(self, x1, x2, x3, x4):
         y1 = self.conv1_adaptor(x1)
@@ -287,7 +333,6 @@ class Adaptor(nn.Module):
         y4 = self.critic_adaptor(x4)
         y5 = self.actor_adaptor(x4)
         return y1, y2, y3, y4, y5
-
 
 class ICM(nn.Module):
     def __init__(self, state_dim, action_dim, forward_hidden_dim):
@@ -315,7 +360,7 @@ class ProgressiveNet(nn.Module):
         #self.icm = ICM(state_dim, action_dim, forward_hidden_dim)
         self.icm = None
         
-        wandb.watch(self, log_freq=1, log="all")
+        wandb.watch(self, log_freq=1000, log="all", log_graph=True)
 
     def forward(self, x, action=None):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)
@@ -366,6 +411,7 @@ class ProgressiveNet(nn.Module):
         dist = torch.distributions.Categorical(actor_features)
 
         log_probs = dist.log_prob(action).view(-1, 1)
+        #print("----------log_probs", log_probs.shape)
         entropy = dist.entropy().mean()
 
         return value, log_probs, entropy
@@ -373,7 +419,6 @@ class ProgressiveNet(nn.Module):
     def act(self, state):
         value, actor_features, _, _ = self.forward(state)
         dist = torch.distributions.Categorical(actor_features)
-        
         chosen_action = dist.sample()
         return chosen_action.item()
 
@@ -403,58 +448,64 @@ class ProgressiveNet(nn.Module):
                 same_values = False
                 print(f"Parameter '{name}' has changed.")
         return same_values
-
-
+    
 if __name__ == "__main__":
     import sys
-    import os
+    # import os
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     import runner
-    from torchviz import make_dot
-    import copy
+    # from torchviz import make_dot
+    # import copy
 
-    env = runner.environment_wrapper("PongNoFrameskip-v4")
-    nn1 = KB_Module("cpu", env)
-    #nn2 = Adaptor()
-    nn3 = Active_Module("cpu", env, lateral_connections=True)
+    nn1 = KB_Module("cpu")
+    # #nn2 = Adaptor()
+    nn3 = Active_Module("cpu", lateral_connections=False)
 
-    nn_super = ProgressiveNet(nn1, nn3)
-    #print(nn_super)
+    # nn_super = ProgressiveNet(nn1, nn3)
+    # #print(nn_super)
 
-    optimizer_ac1 = torch.optim.SGD(nn1.parameters(), lr=0.8, momentum=0.9)
-    optimizer_ac2 = torch.optim.SGD(nn3.parameters(), lr=0.8, momentum=0.9)
-    #optimizer_super = torch.optim.SGD(nn_super.parameters(), lr=0.8, momentum=0.9)
+    # optimizer_ac1 = torch.optim.SGD(nn1.parameters(), lr=0.8, momentum=0.9)
+    # optimizer_ac2 = torch.optim.SGD(nn3.parameters(), lr=0.8, momentum=0.9)
+    # #optimizer_super = torch.optim.SGD(nn_super.parameters(), lr=0.8, momentum=0.9)
 
-    loss = torch.nn.MSELoss()
-    old_params = nn_super.store_parameters(nn_super) 
+    # loss = torch.nn.MSELoss()
+    # old_params = nn_super.store_parameters(nn_super) 
    
-    for i in range(0, 2):
-        optimizer_ac1.zero_grad()
-        optimizer_ac2.zero_grad()
+    # for i in range(0, 2):
+    #     optimizer_ac1.zero_grad()
+    #     optimizer_ac2.zero_grad()
 
-        if i == 1:
-            nn_super.freeze_model("model_b")
-            old_params = nn_super.store_parameters(nn_super.model_b)
+    #     if i == 1:
+    #         nn_super.freeze_model("model_b")
+    #         old_params = nn_super.store_parameters(nn_super.model_b)
 
-        input = torch.randn(10, 1, 84, 84)
-        target1 = torch.randn(10, 6)
-        target2 = torch.randn(10, 1)
+    #     input = torch.randn(10, 1, 84, 84)
+    #     target1 = torch.randn(10, 6)
+    #     target2 = torch.randn(10, 1)
 
-        y1, y2, y3, y4 = nn_super(input)
+    #     y1, y2, y3, y4 = nn_super(input)
 
-        loss1 = loss(y2, target1)
-        loss2 = loss(y1, target2)
-        total_loss = loss1 + loss2
-        total_loss.backward()
-        optimizer_ac1.step()
-        #optimizer_ac2.step()
+    #     loss1 = loss(y2, target1)
+    #     loss2 = loss(y1, target2)
+    #     total_loss = loss1 + loss2
+    #     total_loss.backward()
+    #     optimizer_ac1.step()
+    #     #optimizer_ac2.step()
 
-        if i == 1:
-            if nn_super.compare_parameters(old_params, nn_super.model_b):
-                print("Parameter values are the same.")
-            else:
-                print("Parameter values have changed.")
+    #     if i == 1:
+    #         if nn_super.compare_parameters(old_params, nn_super.model_b):
+    #             print("Parameter values are the same.")
+    #         else:
+    #             print("Parameter values have changed.")
 
+    # input = torch.randn(10, 1, 84, 84)
+
+    # o1 = nn1(input)
+    # weight_reset(nn1)
+    # o2 = nn1(input)
+
+    # print(torch.equal(o1[1], o2[1]))
+    nn3.reset_weights()
 
 
     #print(y1.shape, y2.shape, y3.shape, y4.shape)
