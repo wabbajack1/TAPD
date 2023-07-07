@@ -1,5 +1,3 @@
-#import sys
-#sys.path.append("/infhome/Documents/mynewproj/venv_1/lib/python3.8/site-packages/")
 import common.wrappers
 import numpy as np
 import wandb
@@ -26,6 +24,7 @@ class Worker(object):
         env = common.wrappers.make_atari(env_name, full_action_space=True)
         env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True)
         env = common.wrappers.wrap_pytorch(env)
+        print(f"Rank: {self.rank} - env: {id(env)}\n")
         env.seed(rank+seed-1)
         
         self.env_dict = {}
@@ -71,10 +70,10 @@ class Worker(object):
         for collect in range(self.batch_size_mode):
             action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
             next_state, reward, done, info = self.env_dict[mode].step(action)
-            self.episode_reward[mode] += reward
+            self.episode_reward[mode] += reward[1]
             states.append(self.state[mode]) 
             actions.append(action)
-            rewards.append(reward)
+            rewards.append(reward[0])
             dones.append(done)
                     
             if done:
@@ -83,18 +82,19 @@ class Worker(object):
                 
                 if self.env_dict[mode].was_real_done:
                     frame_number[mode][self.env_name] += info['episode_frame_number'] # each info is accociated with one thread
-                    episode_number[mode][self.env_name] += 1          
+                    episode_number[mode][self.env_name] += 1
+                    self.data[mode].append(self.episode_reward[mode])
+                    print(f"Mode {mode} -- Worker {self.rank} in episode {episode_number[mode][self.env_name]} -- Average Score: {np.mean(self.data[mode][-100:])} -- Total frames across threads: {frame_number[mode][self.env_name]}")
+                    wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), f"Frame-# Training {self.env_dict[mode].spec.id}":frame_number[mode][self.env_name]}, commit=False)
+                    self.episode_reward[mode] = 0
                   
-                self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device)
-                self.data[mode].append(self.episode_reward[mode])
-                print(f"Mode {mode} -- Worker {self.rank} in episode {episode_number[mode][self.env_name]} -- Average Score: {np.mean(self.data[mode][-100:])} -- Total frames across threads: {frame_number[mode][self.env_name]}")
-                wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), f"Frame-# Training {self.env_dict[mode].spec.id}":frame_number[mode][self.env_name]}, commit=False)
-                self.episode_reward[mode] = 0
+                self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device) # no-op step to advance from terminal/lost life state, when lives > 0
             else:
                 self.state[mode] = self.FloatTensor(next_state).to(self.device)
             
             #print(f"Process end {collect}, Rank {self.rank}, frame {info}")    
-        values = self._compute_true_values(states, rewards, dones, mode=mode).unsqueeze(1)
+        values = self._compute_true_values(states, rewards, dones, mode=mode)
+        #print(values.shape, self.rank)
         return states, actions, values
  
     def _compute_true_values(self, states, rewards, dones, mode):
@@ -131,4 +131,4 @@ class Worker(object):
             
         R.reverse()
         
-        return self.FloatTensor(R).to(self.device)
+        return self.FloatTensor(R).to(self.device).unsqueeze(1)

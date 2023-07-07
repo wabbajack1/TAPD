@@ -14,7 +14,7 @@ def variable(t: torch.Tensor, use_cuda=True, **kwargs):
     return Variable(t, **kwargs)
 
 class EWC(object):
-    def __init__(self, agent:None, model: nn.Module, ewc_gamma=0.4, device=None, env_name:Optional[str] = None):
+    def __init__(self, agent:None, model: nn.Module, ewc_lambda=175, ewc_gamma=0.4, device=None, env_name:Optional[str] = None):
         """The online ewc algo 
         Args:
             task (None): the task (in atari a env) for calculating the importance of task w.r.t the paramters
@@ -30,6 +30,7 @@ class EWC(object):
         self.model = model
         self.device = device
         self.ewc_gamma = ewc_gamma
+        self.ewc_lambda = ewclambda
         self.env_name = env_name
         self.agent = agent # we need the memory module of this object (in atari domain task == env == data)
 
@@ -91,7 +92,7 @@ class EWC(object):
         self.old_fisher = fisher.copy()
         return fisher
 
-    def penalty(self, ewc_lambda:int, model: nn.Module):
+    def penalty(self, model: nn.Module):
         """Calculate the penalty to add to loss.
 
         Args:
@@ -104,7 +105,7 @@ class EWC(object):
         loss = 0
         for n, p in model.named_parameters():
             loss += (self.fisher[n] * (p - self.mean_params[n]) ** 2).sum()
-        return loss * ewc_lambda
+        return self.ewc_lambda * loss
     
     def update(self, agent, model, env_name):
         """Update the model, after learning the latest task. Here we calculate

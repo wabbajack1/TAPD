@@ -360,7 +360,7 @@ class ProgressiveNet(nn.Module):
         #self.icm = ICM(state_dim, action_dim, forward_hidden_dim)
         self.icm = None
         
-        wandb.watch(self, log_freq=1000, log="all", log_graph=True)
+        wandb.watch(self, log_freq=1, log="all", log_graph=True)
 
     def forward(self, x, action=None):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)
@@ -411,6 +411,7 @@ class ProgressiveNet(nn.Module):
         dist = torch.distributions.Categorical(actor_features)
 
         log_probs = dist.log_prob(action).view(-1, 1)
+        #print("----------log_probs", log_probs.shape)
         entropy = dist.entropy().mean()
 
         return value, log_probs, entropy

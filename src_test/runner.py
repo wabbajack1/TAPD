@@ -20,6 +20,7 @@ import os
 from commons.model import weight_reset, init_weights
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from typing import Optional
+import time
 
 print(f"Torch version: {torch.__version__}")
 
@@ -46,10 +47,10 @@ def set_seed(seed: int = 44) -> None:
 def main(args):
     wandb.init(
         # set the wandb project where this run will be logged
-        project="run_pandc_atari",
+        project="test_gradients",
         entity="agnostic",
         config=args,
-        mode="disabled",
+        #mode="disabled",
         #id="nd07r8xn",
         #resume="allow"
     )
@@ -78,6 +79,7 @@ def main(args):
     load_step = wandb.config["load_step"]
     load_path = wandb.config["load_path"]
     mode = wandb.config["mode"]
+    visits = wandb.config["visits"]
 
     # create path for storing meta data of the agent (hyperparams, video)
     save_dir = Path("../checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -90,10 +92,7 @@ def main(args):
     if load_path is not None:
         agent.load_active(load_path, load_step, mode)
    
-    progress_and_compress(agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, seed=seed)
-
-    
-    
+    progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, seed=seed)
     
 def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
     """Preprocesses the environment based on the wrappers
@@ -105,16 +104,17 @@ def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=Tru
         env object: return the preprocessed env (MDP problem)
     """
 
+    
     env = common.wrappers.make_atari(env_name, full_action_space=True)
-    env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=clip_rewards) 
     if video_record:
-        path = (save_dir / "video" / "vid.mp4")
-        env = gym.wrappers.Monitor(env, path, force=True, video_callable=lambda episode_id: True)
+        path = (save_dir / "video" / f"{env.spec.id}_{time.time()}")
+        env = gym.wrappers.Monitor(env, path, mode="evaluation")
+    env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=clip_rewards) 
     env = common.wrappers.wrap_pytorch(env)
     return env
 
-def progress_and_compress(agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, seed):
-    visits = 1 # visit each task x times
+def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, seed):
+    visits = visits # visit each task x times
     for visit in range(visits):
         
         for env_name in environments:
@@ -124,8 +124,6 @@ def progress_and_compress(agent, environments, max_steps_progress, max_steps_com
             agent.reinitialize_workers(env_name)
             
             print(f"############## Training on {env_name} ##############")
-            stop_value = env_name # current env name (in continual learning setup its a task)
-            
             # ############## progress activity ##############        
             if agent.resume != True: # check if run chrashed if yes resume the state of training before crash
                 print(f"############## Progress phase - to step: {max_steps_progress}")
@@ -145,7 +143,7 @@ def progress_and_compress(agent, environments, max_steps_progress, max_steps_com
             # eval kb after learning/training     
             print(20*"=", "Evaluation started", 20*"=")
             for env_name_eval in environments:
-                evaluation_data = evaluate(model=agent.active_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
+                evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
                 avg_score = evaluation_data
                 print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
             print(20*"=","Evaluation completed", 20*"=")
@@ -171,7 +169,6 @@ def progress_and_compress(agent, environments, max_steps_progress, max_steps_com
                             actions[i],
                             true_values[i]
                         )
-                #print("----->", len(batches[0][0]), k)
                 
             if agent.ewc_init:
                 # take the latest env and calculate the fisher
@@ -181,7 +178,7 @@ def progress_and_compress(agent, environments, max_steps_progress, max_steps_com
                 ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
                 
             # reset weights after each task
-            agent.active_model.reset_weights() 
+            agent.active_model.reset_weights(seed=seed)
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
             agent.resume = False # leaf this line here!
@@ -196,7 +193,7 @@ def evaluate(model, env_name, save_dir, num_episodes, seed):
     global steps
     
     # init env but do not clip the rewards in eval phase                    
-    env = environment_wrapper(save_dir, env_name=env_name, video_record=False, clip_rewards=False)
+    env = environment_wrapper(save_dir, env_name=env_name, video_record=True, clip_rewards=False)
     
     evaluation_scores = []
     for _ in range(num_episodes):
@@ -205,7 +202,7 @@ def evaluate(model, env_name, save_dir, num_episodes, seed):
         episode_reward = 0
         episode_reward_orignal = 0
 
-        while not done:
+        while not env.was_real_done:
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
             action = model.act(state_tensor)
             next_state, reward, done, info = env.step(action)
@@ -217,7 +214,7 @@ def evaluate(model, env_name, save_dir, num_episodes, seed):
             else:
                 steps[env_name] += 1
                 
-            if done:
+            if env.was_real_done:
                 if env_name not in frame_number_eval:
                     frame_number_eval[env_name] = 0
                     frame_number_eval[env_name] += info["episode_frame_number"]
@@ -225,6 +222,7 @@ def evaluate(model, env_name, save_dir, num_episodes, seed):
                     frame_number_eval[env_name] += info["episode_frame_number"]
                     
                 wandb.log({f"Evaluation score-{env_name}-{model.__class__.__name__}": episode_reward, f"Frame-# Evaluation-{env_name}": frame_number_eval[env_name], f"Steps-# Evaluation-{env_name}":steps[env_name]})
+                
         evaluation_scores.append(episode_reward)
 
     return np.mean(evaluation_scores) #, np.mean(evaluation_scores_original)
@@ -350,7 +348,15 @@ if __name__ == "__main__":
         "--mode",
         type=str,
         default="cpu",
-        help="When loading the agent, on which device should it run (cpu/gpu)?")
+        help="When loading the agent, on which device should it run the evaluation (cpu/gpu)?")
+    
+    
+    parser.add_argument(
+        "-visits",
+        "--visits",
+        type=int,
+        default=1,
+        help="How many times should the tasks visited?")
     
     
     

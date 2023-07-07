@@ -1,5 +1,3 @@
-#import sys
-#sys.path.append("/Users/KerimErekmen/Desktop/Praesentation/Studium/Bachelor/Thesis/agnostic_rl-main/venv/lib/python3.10/site-packages/")
 from commons.model import KB_Module, Active_Module, ProgressiveNet
 from commons.worker import Worker
 from commons.memory.memory import Memory
@@ -12,6 +10,7 @@ import numpy as np
 import torch.multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from pathlib import Path
+from collections import deque
 
 class Agent:
     def __init__(self, use_cuda, lr, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, seed, resume):
@@ -97,114 +96,100 @@ class Agent:
         self.create_worker_parallel(env_name=env_name)
 
     def progress(self):
+        # fetch experience
         states, actions, true_values = self.memory.pop_all()
         self.memory.delete_memory()
-        dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
-        values_list = []
         
-        for batch_states, batch_actions, batch_true_values in dataloader:
-            batch_states = batch_states.to(self.device)
-            batch_actions = batch_actions.to(self.device)
-            batch_true_values = batch_true_values.to(self.device)
-            #print(f"batch_states on {batch_states.shape}, batch_actions on {batch_actions.shape}, batch_true_values on {batch_true_values.shape}\n")
-            
-            values, log_probs, entropy = self.progNet.evaluate_action(batch_states, batch_actions) # inference of active column via kb column
-            
-            values = torch.squeeze(values)
-            log_probs = torch.squeeze(log_probs)
-            entropy = torch.squeeze(entropy)
-            batch_true_values = torch.squeeze(batch_true_values)
-            
-            #print(values.shape, log_probs.shape, entropy.shape, batch_true_values.shape, entropy)
-            
-            advantages = batch_true_values - values
-            #advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-            critic_loss = advantages.pow(2).mean()
-            
-            actor_loss = -(log_probs * advantages.detach()).mean()
-            total_loss = (self.critic_coef * critic_loss) + actor_loss - (self.entropy_coef * entropy)
-
-            self.active_optimizer.zero_grad()
-            #self.progNet_optimizer.zero_grad()
-            total_loss.backward()
-            #print(f"loss {total_loss}, actor_loss {actor_loss}, critic_loss {critic_loss}, entropy {entropy}")
-            torch.nn.utils.clip_grad_norm_(self.active_model.parameters(), 1)
-            #torch.nn.utils.clip_grad_norm_(self.progNet.parameters(), 1)
-            self.active_optimizer.step()
-            #self.progNet_optimizer.step()
-            
-            values_list.extend(values.tolist())
-        return np.mean(values_list).item()
+        #### begin of calculation ####
+        states = states.to(self.device)
+        actions = actions.to(self.device)
+        true_values = true_values.to(self.device)
+        
+        values, log_probs, entropy = self.progNet.evaluate_action(states, actions) # inference of active column via kb column
+        values = torch.squeeze(values)
+        log_probs = torch.squeeze(log_probs)
+        entropy = torch.squeeze(entropy)
+        true_values = torch.squeeze(true_values)
+        
+        # A(s_t, a_t) = r_t+1 + gamma*V(s_t+1, phi) - V(s_t, phi)
+        advantages = true_values - values
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
+        critic_loss = advantages.pow(2).mean()
+        
+        # mean(log(pi(a_t, s_t))* A(s_t, a_t))
+        actor_loss = -(log_probs * advantages.detach()).mean()
+        total_loss = (self.critic_coef * critic_loss) + actor_loss - (self.entropy_coef * entropy)
+        
+        self.active_optimizer.zero_grad()
+        total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.active_model.parameters(), 0.5)
+        self.active_optimizer.step()
+        
+        # print(advantages_normlized, "\n", advantages)
+        #print(f"loss {total_loss}, actor_loss {actor_loss}, critic_loss {critic_loss}, entropy {entropy}")
+        # print(f"states on {states.shape}, actions on {actions.shape}, true_values on {true_values.shape}")
+        return values.mean().item(), critic_loss.item(), actor_loss.item(), entropy.item()
 
     def compress(self, ewc):
+        # specificy loss function
         criterion = torch.nn.KLDivLoss(reduction="batchmean", log_target=True)
-        ewc_lambda = 150
-        total_kl_loss = 0
-
+        
+        # fetch experience
         states, actions, true_values = self.memory.pop_all() # take the same data again
         self.memory.delete_memory()
-        dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         
-        values_list_kb = []
-        values_list_ac = []
-        for batch_states, batch_actions, _ in dataloader:
-            batch_states = batch_states.to(self.device)
-            batch_actions = batch_actions.to(self.device)            
-            
-            # calc infernce for loss calc
-            values_active, log_probs_active, _ = self.progNet.evaluate_action(batch_states, batch_actions) # kb column is the last one with operation in the prognet
-            values_kb, log_probs_kb, _ = self.kb_model.evaluate_action(batch_states, batch_actions)
+        #### begin of calculation ####
+        states = states.to(self.device)
+        actions = actions.to(self.device)            
+        
+        # imitation of kb to active network
+        _, log_probs_active, _ = self.progNet.evaluate_action(states, actions) # kb column is the last one with operation in the prognet
+        _, log_probs_kb, _ = self.kb_model.evaluate_action(states, actions)
+        
+        # calculate the loss function
+        kl_loss = criterion(log_probs_kb.unsqueeze(0), log_probs_active.unsqueeze(0).detach())
+        
+        # calc ewc loss after every update and protected the weights w.r.t. the previous task
+        if ewc is not None:
+            # The second argument, crucial for EWC, guides parameter space during training using old parameters as reference to prevent excessive divergence
+            self.ewc_loss = ewc.penalty(self.kb_model)
+            total_loss = kl_loss + self.ewc_loss
+        else:
+            total_loss = kl_loss
 
-
-            kl_loss = criterion(log_probs_kb.unsqueeze(0), log_probs_active.unsqueeze(0).detach())
-            
-            # calc ewc loss after every update and protected the weights w.r.t. the previous task 
-            if ewc is not None:
-                self.ewc_loss = ewc.penalty(ewc_lambda, self.kb_model) # the second argument needs the paramters of the model which is protected. The second argument suggests paramaters space during training, because in the ewc algo the old paramter was saved as a reference point in the paramters space for not converging to far from it
-                #print("ewc loss", self.ewc_loss)
-                total_loss = kl_loss + self.ewc_loss
-            else:
-                total_loss = kl_loss
-                #print(kl_loss)
-                
-            
-            #print("----->", torch.log(log_probs_kb).shape, log_probs_active.detach().shape)
-
-            # calulate the gradients
-            self.active_optimizer.zero_grad()
-            self.kb_optimizer.zero_grad()
-            #self.progNet_optimizer.zero_grad()
-            total_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.kb_model.parameters(), 1)
-            #torch.nn.utils.clip_grad_norm_(self.progNet.parameters(), 1)
-            
-            # make only step in kb column
-            self.kb_optimizer.step()
-            #self.progNet_optimizer.step()
-
-            total_kl_loss += total_loss.item()
-            values_list_kb.extend(values_kb.tolist())
-            values_list_ac.extend(values_active.tolist())
-            
-        return np.mean(values_list_kb).item(), np.mean(values_list_ac).item(), (total_kl_loss / len(dataloader))
+        # calulate the gradients
+        self.active_optimizer.zero_grad()
+        self.kb_optimizer.zero_grad()
+        total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.kb_model.parameters(), 0.5)
+        self.kb_optimizer.step()
+        
+        return total_loss.item(), kl_loss.item(), float(self.ewc_loss)
 
     def progress_training(self, max_steps):
+        # watch variables
         steps_idx = 0
-        data_value = []
-        data_rewards = []
         updates = 0
         last_saved_steps_idx = 0
+        
+        # Initialize deque with max length 100 for logging data
+        value_log = deque(maxlen=100)
+        critic_loss_log = deque(maxlen=100)
+        actor_loss_log = deque(maxlen=100)
+        entropy_log = deque(maxlen=100)
+        
+        # freeze and train model
         self.active_model.train()
         self.kb_model.freeze_parameters()
         self.active_model.unfreeze_parameters()
-
+        
+        # iterate over the specifiec steps in the environment
         while steps_idx < max_steps:
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
                 futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
                 batches = [f.result() for f in as_completed(futures)] # nmb of workers (each worker has states, actions, true_values, ...)
+            
             
             # iterate over each workers batch and push to memory (batches = (#-workers, states, actions, ...))
             for j, (states, actions, true_values) in enumerate(batches):
@@ -216,9 +201,14 @@ class Agent:
                     )
                     
             steps_idx += self.batch_size * len(self.workers)
-            value = self.progress() # train
-            data_value.append(value)
+            value, critic_loss, actor_loss, entropy = self.progress() # train active column
             updates += 1
+            
+            # log the incoming data
+            value_log.append(value)
+            critic_loss_log.append(critic_loss)
+            actor_loss_log.append(actor_loss)
+            entropy_log.append(entropy)
             
             # save active model weights and optimizer status every 100_000 steps
             if (steps_idx - last_saved_steps_idx) >= 500_000:
@@ -227,14 +217,31 @@ class Agent:
                 last_saved_steps_idx = steps_idx
             
             if steps_idx % 10000 == 0: # log every 10000 steps
-                wandb.log({"Critic value": np.mean(data_value[-100:]), "Steps Progress": steps_idx})
+                value_mean = np.mean(value_log)
+                critic_loss_mean = np.mean(critic_loss_log)
+                actor_loss_mean = np.mean(actor_loss_log)
+                entropy_mean = np.mean(entropy_log)
+                
+                wandb.log({
+                    "Value": value_mean, 
+                    "Critic Loss": critic_loss_mean, 
+                    "Actor Loss": actor_loss_mean,
+                    "Entropy": entropy_mean,
+                    "Steps Progress": steps_idx
+                })
 
     def compress_training(self, max_steps, ewc):
+        # init values for run
         steps_idx = 0
         last_saved_steps_idx = 0
         updates = 0
-        data_value_kb = []
-        data_value_ac = []
+        
+        # Initialize deque with max length 100 for logging data
+        total_loss_log = deque(maxlen=100)
+        kl_loss_log = deque(maxlen=100)
+        ewc_loss_log = deque(maxlen=100)
+        
+        # model training
         self.kb_model.train()  
         self.active_model.freeze_parameters()
         self.kb_model.unfreeze_parameters()
@@ -255,10 +262,13 @@ class Agent:
                         )
             
             steps_idx += self.batch_size * len(self.workers)
-            value_kb, value_ac, loss = self.compress(ewc) # train
-            data_value_kb.append(value_kb)
-            data_value_ac.append(value_ac)
+            total_loss, kl_loss, ewc_loss = self.compress(ewc) # train
             updates += 1
+            
+            # log incoming data
+            total_loss_log.append(total_loss)
+            kl_loss_log.append(kl_loss)
+            ewc_loss_log.append(ewc_loss)
             
             # save active model weights and optimizer status every 100_000 steps
             if (steps_idx - last_saved_steps_idx) >= 500_000:
@@ -267,7 +277,16 @@ class Agent:
                 last_saved_steps_idx = steps_idx
             
             if steps_idx % 10000 == 0: # log every 10000 steps
-                wandb.log({"Distillation loss": loss, "Compress Value KB": np.mean(data_value_kb[-100:]), "Compress Value AC": np.mean(data_value_ac[-100:]), "Steps Compress": steps_idx})
+                
+                # calcualte mean
+                total_loss_mean = np.mean(total_loss_log)
+                kl_loss_mean = np.mean(kl_loss_log)
+                ewc_loss_mean = np.mean(ewc_loss_log)
+                
+                wandb.log({"Distillation loss (KL Loss + EWC loss)": total_loss_mean,
+                           "KL Loss": kl_loss_mean,
+                           "EWC loss": ewc_loss_mean,
+                           "Steps Compress": steps_idx})
 
     def save_active(self, step):
         """step + self.inc_active = the last digit adds the step size to the step size
