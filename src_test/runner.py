@@ -76,6 +76,7 @@ def main(args):
     batch_size_fisher = wandb.config["batch_size_fisher"]
     batch_number_fisher = wandb.config["batch_number_fisher"]
     ewcgamma = wandb.config["ewcgamma"]
+    ewclambda = wandb.config["ewclambda"]
     load_step = wandb.config["load_step"]
     load_path = wandb.config["load_path"]
     mode = wandb.config["mode"]
@@ -92,7 +93,7 @@ def main(args):
     if load_path is not None:
         agent.load_active(load_path, load_step, mode)
    
-    progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, seed=seed)
+    progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
     
 def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
     """Preprocesses the environment based on the wrappers
@@ -113,7 +114,7 @@ def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=Tru
     env = common.wrappers.wrap_pytorch(env)
     return env
 
-def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, seed):
+def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, seed):
     visits = visits # visit each task x times
     for visit in range(visits):
         
@@ -172,7 +173,7 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
                 
             if agent.ewc_init:
                 # take the latest env and calculate the fisher
-                ewc = EWC(agent=agent, model=agent.kb_model, ewc_gamma=ewcgamma, device=agent.device, env_name=env_name)
+                ewc = EWC(agent=agent, model=agent.kb_model, ewc_lambda=ewclambda, ewc_gamma=ewcgamma, device=agent.device, env_name=env_name)
                 agent.ewc_init = False
             else: # else running calulaction taken the last fisher into consideration
                 ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
@@ -328,6 +329,13 @@ if __name__ == "__main__":
         type=float,
         default=0.99,
         help="This is the decaying factor of the online-ewc algorithm, where ewcgamma = 1 indicates older tasks are more important than newer one")
+    
+    parser.add_argument(
+        "-ewclambda",
+        "--ewclambda",
+        type=int,
+        default=175,
+        help="The scale at which the regularizer is used (here 175 based on P&C Paper)")
     
     parser.add_argument(
         "-load_step",
