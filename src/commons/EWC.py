@@ -79,6 +79,7 @@ class EWC(object):
             actor_loss.backward() # calc the gradients and store it in grad
             
             # Update Fisher information matrix
+            # y_t = a * y_t + (1-a)*y_{t-1}
             for name, param in self.model.named_parameters():
                 if param.grad is not None:
                     if self.old_fisher is not None and name in self.old_fisher:
@@ -88,7 +89,7 @@ class EWC(object):
         
         for name in fisher:
             fisher[name] /= len(dataloader)
-
+            
         self.old_fisher = fisher.copy()
         return fisher
 
@@ -105,7 +106,6 @@ class EWC(object):
         loss = 0
         for n, p in model.named_parameters():
             loss += (self.fisher[n] * (p - self.mean_params[n]) ** 2).sum()
-            
         return self.ewc_lambda * loss
     
     def update(self, agent, model, env_name):

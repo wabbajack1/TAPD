@@ -411,7 +411,6 @@ class ProgressiveNet(nn.Module):
         dist = torch.distributions.Categorical(actor_features)
 
         log_probs = dist.log_prob(action).view(-1, 1)
-        #print("----------log_probs", log_probs.shape)
         entropy = dist.entropy().mean()
 
         return value, log_probs, entropy
