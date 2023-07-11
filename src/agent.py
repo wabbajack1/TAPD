@@ -113,7 +113,7 @@ class Agent:
         
         # A(s_t, a_t) = r_t+1 + gamma*V(s_t+1, phi) - V(s_t, phi)
         advantages = true_values - values
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
+        #advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
         critic_loss = advantages.pow(2).mean()
         
         # mean(log(pi(a_t, s_t))* A(s_t, a_t))
@@ -126,7 +126,7 @@ class Agent:
         self.active_optimizer.step()
         
         # print(advantages_normlized, "\n", advantages)
-        #print(f"loss {total_loss}, actor_loss {actor_loss}, critic_loss {critic_loss}, entropy {entropy}")
+        # print(f"loss {total_loss}, actor_loss {actor_loss}, critic_loss {critic_loss}, entropy {entropy}")
         # print(f"states on {states.shape}, actions on {actions.shape}, true_values on {true_values.shape}")
         return values.mean().item(), critic_loss.item(), actor_loss.item(), entropy.item()
 
@@ -340,16 +340,21 @@ class Agent:
             print(f"No Active net found at {load_path}")
             return False  # Indicate unsuccessful load
         
-    def load_kb(self, load_path, load_step):
+    def load_kb(self, load_path, load_step, mode):
         load_path = Path(f"{load_path}/kb_model_{int(load_step)}.chkpt")
-
+        modified_state_dict = {}
+        
         if load_path.exists():
-            checkpoint = torch.load(load_path)
-            self.kb_model.load_state_dict(checkpoint["model"])
-            self.kb_optimizer.load_state_dict(checkpoint["optimizer"])
+            checkpoint = torch.load(load_path, map_location=torch.device(mode))
+        
+            # Filter out unwanted keys
+            state_dict = {k: v for k, v in checkpoint["model"].items() if not k.startswith('adaptor')}
+        
+            self.kb_model.load_state_dict(state_dict)
+            #self.kb_optimizer.load_state_dict(checkpoint["optimizer"])
             
-            print(f"KB net loaded from {load_path}")
+            print(f"kb net loaded from {load_path}")
             return True  # Indicate successful load
         else:
-            print(f"No KB net found at {load_path}")
+            print(f"No kb net found at {load_path}")
             return False  # Indicate unsuccessful load

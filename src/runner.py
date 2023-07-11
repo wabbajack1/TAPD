@@ -57,8 +57,8 @@ def main(args):
     
     # Environments for multitask
     #environments = ["PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
-    environments = ['SpaceInvadersNoFrameskip-v4', "PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4']
-    #environments = ["PongNoFrameskip-v4", 'SpaceInvadersNoFrameskip-v4', 'StarGunnerNoFrameskip-v4', "BeamRiderNoFrameskip-v4"]
+    #environments = ['SpaceInvadersNoFrameskip-v4', "PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4']
+    environments = ["PongNoFrameskip-v4", "BeamRiderNoFrameskip-v4", 'SpaceInvadersNoFrameskip-v4', 'StarGunnerNoFrameskip-v4']
     
     # args
     seed = wandb.config["seed"]
@@ -77,7 +77,8 @@ def main(args):
     batch_number_fisher = wandb.config["batch_number_fisher"]
     ewcgamma = wandb.config["ewcgamma"]
     ewclambda = wandb.config["ewclambda"]
-    load_step = wandb.config["load_step"]
+    load_step_active = wandb.config["load_step_active"]
+    load_step_kb = wandb.config["load_step_kb"]
     load_path = wandb.config["load_path"]
     mode = wandb.config["mode"]
     visits = wandb.config["visits"]
@@ -91,10 +92,12 @@ def main(args):
     
     ###################### start progress and compress algo #########################
     if load_path is not None:
-        agent.load_active(load_path, load_step, mode)
+        agent.load_active(load_path, load_step_active, mode)
+        agent.load_kb(load_path, load_step_kb, mode)
    
     progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
-    
+    #test_disitillation(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
+
 def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
     """Preprocesses the environment based on the wrappers
 
@@ -178,7 +181,7 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
             
             # eval kb after learning/training     
             print(20*"=", "Evaluation started", 20*"=")
-            for env_name_eval in environments:
+            for env_name_eval in ["PongNoFrameskip-v4", "BeamRiderNoFrameskip-v4", 'SpaceInvadersNoFrameskip-v4', 'StarGunnerNoFrameskip-v4']:
                 evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
                 avg_score = evaluation_data
                 print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
@@ -187,6 +190,58 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
             print(f"############## VISIT - {visit} ################ END OF TASK - {env_name}##############################\n")
         
     print("Training completed.\n")        
+
+def test_disitillation(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, seed):
+    
+    # see eval before distillation
+    print(20*"=", "Evaluation started", 20*"=")
+    for env_name_eval in environments:
+        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
+        avg_score = evaluation_data
+        print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
+    print(20*"=","Evaluation completed", 20*"=")
+    
+    # compute fisher for pong
+    print("############## Creating workers ##############")
+    agent.reinitialize_workers("PongNoFrameskip-v4")
+            
+    for k in range(batch_number_fisher):
+        with ThreadPoolExecutor(max_workers=len(agent.workers)) as executor:
+            # Submit tasks to the executor and collect results based on the current policy of kb knowledge
+            futures = [executor.submit(agent.collect_batch, worker, "Compress", batch_size_fisher) for worker in agent.workers]
+            batches = [f.result() for f in as_completed(futures)]
+            
+            
+        for j, (states, actions, true_values) in enumerate(batches):
+            for i, _ in enumerate(states):
+                agent.memory.push(
+                    states[i],
+                    actions[i],
+                    true_values[i]
+                )
+        
+    if agent.ewc_init:
+        # take the latest env and calculate the fisher
+        ewc = EWC(agent=agent, model=agent.kb_model, ewc_lambda=ewclambda, ewc_gamma=ewcgamma, device=agent.device, env_name="PongNoFrameskip-v4")
+        agent.ewc_init = False
+    else: # else running calulaction taken the last fisher into consideration
+        ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
+    
+    # distill knowledge from beamrider and protect pong
+    print("Distillation + EWC")
+    print("############## Creating workers ##############")
+    agent.reinitialize_workers(["BeamRiderNoFrameskip-v4"])
+    agent.compress_training(max_steps_compress, ewc)
+    
+    # see eval after distillation
+    print(20*"=", "Evaluation started", 20*"=")
+    for env_name_eval in environments:
+        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
+        avg_score = evaluation_data
+        print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
+    print(20*"=","Evaluation completed", 20*"=")
+            
+    pass
 
 def evaluate(model, env_name, save_dir, num_episodes, seed):
     
@@ -339,8 +394,15 @@ if __name__ == "__main__":
         help="The scale at which the regularizer is used (here 175 based on P&C Paper)")
     
     parser.add_argument(
-        "-load_step",
-        "--load_step",
+        "-load_step_active",
+        "--load_step_active",
+        type=int,
+        default=0,
+        help="From which timestep do you want to load your agent?")
+    
+    parser.add_argument(
+        "-load_step_kb",
+        "--load_step_kb",
         type=int,
         default=0,
         help="From which timestep do you want to load your agent?")
