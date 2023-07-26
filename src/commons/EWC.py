@@ -7,6 +7,7 @@ import torch.utils.data
 from typing import Optional
 from commons.memory.CustomDataset import CustomDataset
 from torch.utils.data.dataloader import DataLoader
+from torch.nn.utils import parameters_to_vector
 
 def variable(t: torch.Tensor, use_cuda=True, **kwargs):
     if torch.cuda.is_available() and use_cuda:
@@ -14,7 +15,7 @@ def variable(t: torch.Tensor, use_cuda=True, **kwargs):
     return Variable(t, **kwargs)
 
 class EWC(object):
-    def __init__(self, agent:None, model: nn.Module, ewc_lambda=175, ewc_gamma=0.4, device=None, env_name:Optional[str] = None):
+    def __init__(self, agent:None, model: nn.Module, ewc_lambda=175, ewc_gamma=0.4, batch_size_fisher=32, device=None, env_name:Optional[str] = None):
         """The online ewc algo 
         Args:
             task (None): the task (in atari a env) for calculating the importance of task w.r.t the paramters
@@ -26,38 +27,41 @@ class EWC(object):
             self.FloatTensor = torch.cuda.FloatTensor
         else:
             self.FloatTensor = torch.FloatTensor
-
+            
+        self.ewc_start_timestep = 1000
         self.model = model
         self.device = device
         self.ewc_gamma = ewc_gamma
         self.ewc_lambda = ewc_lambda
         self.env_name = env_name
         self.agent = agent # we need the memory module of this object (in atari domain task == env == data)
+        self.batch_size_fisher = batch_size_fisher
 
-        self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad}
+        self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad and "critic" not in n}
         self.mean_params = {}
         self.old_fisher = None
         self.fisher = self.calculate_fisher() # calculate the importance of params for the previous task
+        self.mean_model = deepcopy(self.model)
         
         for n, p in deepcopy(self.params).items():
             self.mean_params[n] = variable(p.data)
-            
+    
     def calculate_fisher(self):
         print(f"Calculation of the task for the importance of each parameter: {self.env_name}")
         self.model.eval()
         
         fisher = {}
         for n, p in deepcopy(self.params).items():
-            p.data.zero_()
-            fisher[n] = variable(p.data)
+            fisher[n] = variable(p.detach().clone().zero_())
         
         states, actions, true_values = self.agent.memory.pop_all()
         self.agent.memory.delete_memory()
         dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
-        
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+        i = 0
         for batch_states, batch_actions, batch_true_values in dataloader:
-            #print(len(dataset), len(dataloader), batch_states.shape)
+            #print("Parameters:", len(dataset), len(dataloader), batch_states.shape, len(dataloader)/self.agent.no_of_workers, self.batch_size_fisher)
+            # print("batch size ewc", batch_states.shape, batch_actions.shape, batch_true_values.shape)
             
             # Calculate gradients
             self.model.zero_grad()
@@ -73,26 +77,30 @@ class EWC(object):
             batch_true_values = torch.squeeze(batch_true_values)
             
             advantages = batch_true_values - values
-            critic_loss = advantages.pow(2).mean()
+            # critic_loss = advantages.pow(2).mean()
             
             actor_loss = -(log_probs * advantages.detach()).mean()
+            # total_loss = ((0.5 * critic_loss) + actor_loss - (0.01 * entropy)).backward()
             actor_loss.backward() # calc the gradients and store it in grad
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1)
             
             # Update Fisher information matrix
             # y_t = a * y_t + (1-a)*y_{t-1}
             for name, param in self.model.named_parameters():
-                if param.grad is not None:
+                if param.grad is not None and "critic" not in name:
                     if self.old_fisher is not None and name in self.old_fisher:
-                        fisher[name] += self.ewc_gamma * self.old_fisher[name] + (1 - self.ewc_gamma) * (param.grad.data.clone() ** 2)
+                        fisher[name] += self.ewc_gamma * self.old_fisher[name] + param.grad.detach().clone().pow(2)
                     else:
-                        fisher[name] += param.grad.data.clone() ** 2
+                        fisher[name] += param.grad.detach().clone().pow(2)
         
         for name in fisher:
-            fisher[name] /= len(dataloader)
-            
+            fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data)) / torch.std(fisher[name].data + 1e-08)
+            # fisher[name].data /= self.agent.no_of_workers
+            print(name, fisher[name].data)
+        
         self.old_fisher = fisher.copy()
         return fisher
-
+    
     def penalty(self, model: nn.Module):
         """Calculate the penalty to add to loss.
 
@@ -104,8 +112,23 @@ class EWC(object):
             _type_: float
         """
         loss = 0
+        fisher_sum = 0
+        mean_params_sum = 0
         for n, p in model.named_parameters():
-            loss += (self.fisher[n] * (p - self.mean_params[n]) ** 2).sum()
+            if "critic" not in n:
+                # fisher = torch.sqrt(self.fisher[n] + 1e-08)
+                fisher = self.fisher[n]
+                loss += (fisher * (p - self.mean_params[n]).pow(2)).sum()
+                fisher_sum += self.fisher[n].sum()
+                mean_params_sum += self.mean_params[n].sum()
+                # print(n, torch.sqrt(self.fisher[n] + 1e-05))
+        
+        # euclidean_distance = compute_distance(model, self.mean_model, "euclidean")
+        # cosine_similarity = compute_distance(model, self.mean_model, "cosine")
+        
+        # print(f"Euclidean Distance: {euclidean_distance}")
+        # print(f"Cosine Similarity: {cosine_similarity}")
+        print("EWC Loss", (self.ewc_lambda * loss).item(), f"EWC lambda {self.ewc_lambda}", f"Fisher: {fisher_sum.sum()}", f"mean params: {mean_params_sum.sum()}")
         return self.ewc_lambda * loss
     
     def update(self, agent, model, env_name):
@@ -123,3 +146,15 @@ class EWC(object):
         self.fisher = self.calculate_fisher()
         for n, p in deepcopy(self.params).items():
             self.mean_params[n] = variable(p.data)
+            
+            
+def compute_distance(model1, model2, mode="euclidean"):
+    params1 = parameters_to_vector(model1.parameters())
+    params2 = parameters_to_vector(model2.parameters())
+
+    if mode == "euclidean":
+        return torch.norm(params1 - params2).item()
+    elif mode == "cosine":
+        return torch.nn.functional.cosine_similarity(params1.unsqueeze(0), params2.unsqueeze(0)).item()
+    else:
+        raise ValueError(f"Unknown mode: {mode}")

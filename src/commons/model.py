@@ -115,7 +115,7 @@ class KB_Module(nn.Module):
         return x1, x2, x3, x4, critic_output, actor_output
 
     def act(self, state):
-        _, _, _, _, critic_output, actor_features = self.forward(state.to(self.device))
+        _, _, _, _, critic_output, actor_features = self.forward(state)
         dist = torch.distributions.Categorical(actor_features)
         
         chosen_action = dist.sample()
@@ -130,7 +130,7 @@ class KB_Module(nn.Module):
         """
         with torch.no_grad():
             x1, x2, x3, x4, critic_output, actor_output = self.forward(x)
-        return critic_output
+        return critic_output.to("cpu")
 
     def evaluate_action(self, state, action):
         """
@@ -140,7 +140,7 @@ class KB_Module(nn.Module):
         :param action: action tensor
         :return: value, log_probs, entropy tensors
         """
-        _, _, _, _, value, actor_features = self.forward(state.to(self.device))
+        _, _, _, _, value, actor_features = self.forward(state)
         dist = torch.distributions.Categorical(actor_features)
 
         log_probs = dist.log_prob(action).view(-1, 1)
@@ -268,10 +268,10 @@ class Active_Module(nn.Module):
         with torch.no_grad():
             critic_output, _ = self.forward(x)
         
-        return critic_output
+        return critic_output.to("cpu")
 
     def act(self, state):
-        value, actor_features = self.forward(state.to(self.device))
+        value, actor_features = self.forward(state)
         dist = torch.distributions.Categorical(actor_features)
         
         chosen_action = dist.sample()
@@ -341,6 +341,8 @@ class ICM(nn.Module):
         self.forward_model = nn.Sequential(
             nn.Linear(state_dim + action_dim, forward_hidden_dim),
             nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLu(),
             nn.Linear(forward_hidden_dim, state_dim),
         )
 
@@ -382,7 +384,7 @@ class ProgressiveNet(nn.Module):
         with torch.no_grad():
             ritic_output_model_b, _, _, _ = self.forward(x)
             
-        return ritic_output_model_b
+        return ritic_output_model_b.to("cpu")
     
     def check_calculated_gradient(self):
         skip1 = True

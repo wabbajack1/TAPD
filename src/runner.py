@@ -21,16 +21,15 @@ from commons.model import weight_reset, init_weights
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from typing import Optional
 import time
+from utils import environment_wrapper, test_disitillation
 
 print(f"Torch version: {torch.__version__}")
-
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
 os.environ['WANDB_MODE'] = 'online'
 frame_number_eval = {}
 steps = {}
-
 
 def set_seed(seed: int = 44) -> None:
     np.random.seed(seed)
@@ -58,7 +57,8 @@ def main(args):
     # Environments for multitask
     #environments = ["PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
     #environments = ['SpaceInvadersNoFrameskip-v4', "PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4']
-    environments = ["PongNoFrameskip-v4", "BeamRiderNoFrameskip-v4", 'SpaceInvadersNoFrameskip-v4', 'StarGunnerNoFrameskip-v4']
+    #environments = ["PongNoFrameskip-v4", "BeamRiderNoFrameskip-v4", 'SpaceInvadersNoFrameskip-v4', 'StarGunnerNoFrameskip-v4']
+    environments = ["StarGunnerNoFrameskip-v4"]
     
     # args
     seed = wandb.config["seed"]
@@ -95,27 +95,8 @@ def main(args):
         agent.load_active(load_path, load_step_active, mode)
         agent.load_kb(load_path, load_step_kb, mode)
    
-    progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
-    #test_disitillation(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
-
-def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
-    """Preprocesses the environment based on the wrappers
-
-    Args:
-        env_name (string): env name
-
-    Returns:
-        env object: return the preprocessed env (MDP problem)
-    """
-
-    
-    env = common.wrappers.make_atari(env_name, full_action_space=True)
-    if video_record:
-        path = (save_dir / "video" / f"{env.spec.id}_{time.time()}")
-        env = gym.wrappers.Monitor(env, path, mode="evaluation")
-    env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=clip_rewards) 
-    env = common.wrappers.wrap_pytorch(env)
-    return env
+    #progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
+    test_disitillation(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
 
 def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, seed):
     visits = visits # visit each task x times
@@ -190,99 +171,6 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
             print(f"############## VISIT - {visit} ################ END OF TASK - {env_name}##############################\n")
         
     print("Training completed.\n")        
-
-def test_disitillation(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, seed):
-    
-    # see eval before distillation
-    print(20*"=", "Evaluation started", 20*"=")
-    for env_name_eval in environments:
-        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
-        avg_score = evaluation_data
-        print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
-    print(20*"=","Evaluation completed", 20*"=")
-    
-    # compute fisher for pong
-    print("############## Creating workers ##############")
-    agent.reinitialize_workers("PongNoFrameskip-v4")
-            
-    for k in range(batch_number_fisher):
-        with ThreadPoolExecutor(max_workers=len(agent.workers)) as executor:
-            # Submit tasks to the executor and collect results based on the current policy of kb knowledge
-            futures = [executor.submit(agent.collect_batch, worker, "Compress", batch_size_fisher) for worker in agent.workers]
-            batches = [f.result() for f in as_completed(futures)]
-            
-            
-        for j, (states, actions, true_values) in enumerate(batches):
-            for i, _ in enumerate(states):
-                agent.memory.push(
-                    states[i],
-                    actions[i],
-                    true_values[i]
-                )
-        
-    if agent.ewc_init:
-        # take the latest env and calculate the fisher
-        ewc = EWC(agent=agent, model=agent.kb_model, ewc_lambda=ewclambda, ewc_gamma=ewcgamma, device=agent.device, env_name="PongNoFrameskip-v4")
-        agent.ewc_init = False
-    else: # else running calulaction taken the last fisher into consideration
-        ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
-    
-    # distill knowledge from beamrider and protect pong
-    print("Distillation + EWC")
-    print("############## Creating workers ##############")
-    agent.reinitialize_workers(["BeamRiderNoFrameskip-v4"])
-    agent.compress_training(max_steps_compress, ewc)
-    
-    # see eval after distillation
-    print(20*"=", "Evaluation started", 20*"=")
-    for env_name_eval in environments:
-        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
-        avg_score = evaluation_data
-        print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
-    print(20*"=","Evaluation completed", 20*"=")
-            
-    pass
-
-def evaluate(model, env_name, save_dir, num_episodes, seed):
-    
-    # collect frame across all visits
-    global frame_number_eval
-    global steps
-    
-    # init env but do not clip the rewards in eval phase                    
-    env = environment_wrapper(save_dir, env_name=env_name, video_record=True, clip_rewards=False)
-    
-    evaluation_scores = []
-    for _ in range(num_episodes):
-        state = env.reset()
-        done = False
-        episode_reward = 0
-        episode_reward_orignal = 0
-
-        while not env.was_real_done:
-            state_tensor = torch.FloatTensor(state).unsqueeze(0)
-            action = model.act(state_tensor)
-            next_state, reward, done, info = env.step(action)
-            episode_reward += reward
-            state = next_state
-            
-            if env_name not in steps:
-                steps[env_name] = 0
-            else:
-                steps[env_name] += 1
-                
-            if env.was_real_done:
-                if env_name not in frame_number_eval:
-                    frame_number_eval[env_name] = 0
-                    frame_number_eval[env_name] += info["episode_frame_number"]
-                else:
-                    frame_number_eval[env_name] += info["episode_frame_number"]
-                    
-                wandb.log({f"Evaluation score-{env_name}-{model.__class__.__name__}": episode_reward, f"Frame-# Evaluation-{env_name}": frame_number_eval[env_name], f"Steps-# Evaluation-{env_name}":steps[env_name]})
-                
-        evaluation_scores.append(episode_reward)
-
-    return np.mean(evaluation_scores) #, np.mean(evaluation_scores_original)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -389,7 +277,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-ewclambda",
         "--ewclambda",
-        type=int,
+        type=float,
         default=175,
         help="The scale at which the regularizer is used (here 175 based on P&C Paper)")
     

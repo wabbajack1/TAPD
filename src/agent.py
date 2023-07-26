@@ -150,10 +150,10 @@ class Agent:
         kl_loss = criterion(log_probs_kb.unsqueeze(0), log_probs_active.unsqueeze(0).detach())
         
         # calc ewc loss after every update and protected the weights w.r.t. the previous task
-        if ewc is not None:
+        if ewc is not None and self.steps_idx >= ewc.ewc_start_timestep:
             # The second argument, crucial for EWC, guides parameter space during training using old parameters as reference to prevent excessive divergence
             self.ewc_loss = ewc.penalty(self.kb_model)
-            total_loss = kl_loss + self.ewc_loss
+            total_loss = kl_loss + self.ewc_loss.item()
         else:
             total_loss = kl_loss
 
@@ -164,13 +164,11 @@ class Agent:
         torch.nn.utils.clip_grad_norm_(self.kb_model.parameters(), 0.5)
         self.kb_optimizer.step()
         
-        print(kl_loss, self.ewc_loss)
-        
         return total_loss.item(), kl_loss.item(), float(self.ewc_loss)
 
     def progress_training(self, max_steps):
         # watch variables
-        steps_idx = 0
+        self.steps_idx = 0
         updates = 0
         last_saved_steps_idx = 0
         
@@ -186,7 +184,7 @@ class Agent:
         self.active_model.unfreeze_parameters()
         
         # iterate over the specifiec steps in the environment
-        while steps_idx < max_steps:
+        while self.steps_idx < max_steps:
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
                 futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
@@ -202,7 +200,7 @@ class Agent:
                         true_values[i]
                     )
                     
-            steps_idx += self.batch_size * len(self.workers)
+            self.steps_idx += self.batch_size * len(self.workers)
             value, critic_loss, actor_loss, entropy = self.progress() # train active column
             updates += 1
             
@@ -213,12 +211,12 @@ class Agent:
             entropy_log.append(entropy)
             
             # save active model weights and optimizer status every 100_000 steps
-            if (steps_idx - last_saved_steps_idx) >= 500_000:
-                print(f"Save Active in step-# with updates = {updates}: {steps_idx}\n")
-                self.save_active(steps_idx)
-                last_saved_steps_idx = steps_idx
+            if (self.steps_idx - last_saved_steps_idx) >= 500_000:
+                print(f"Save Active in step-# with updates = {updates}: {self.steps_idx}\n")
+                self.save_active(self.steps_idx)
+                last_saved_steps_idx = self.steps_idx
             
-            if steps_idx % 10000 == 0: # log every 10000 steps
+            if self.steps_idx % 10000 == 0: # log every 10000 steps
                 value_mean = np.mean(value_log)
                 critic_loss_mean = np.mean(critic_loss_log)
                 actor_loss_mean = np.mean(actor_loss_log)
@@ -229,12 +227,12 @@ class Agent:
                     "Critic Loss": critic_loss_mean, 
                     "Actor Loss": actor_loss_mean,
                     "Entropy": entropy_mean,
-                    "Steps Progress": steps_idx
+                    "Steps Progress": self.steps_idx
                 })
 
     def compress_training(self, max_steps, ewc):
         # init values for run
-        steps_idx = 0
+        self.steps_idx = 0
         last_saved_steps_idx = 0
         updates = 0
         
@@ -248,7 +246,7 @@ class Agent:
         self.active_model.freeze_parameters()
         self.kb_model.unfreeze_parameters()
         
-        while steps_idx < max_steps:
+        while self.steps_idx < max_steps:
             # collect training data
             with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
                 # Submit tasks to the executor and collect results
@@ -263,7 +261,7 @@ class Agent:
                             true_values[i]
                         )
             
-            steps_idx += self.batch_size * len(self.workers)
+            self.steps_idx += self.batch_size * len(self.workers)
             total_loss, kl_loss, ewc_loss = self.compress(ewc) # train
             updates += 1
             
@@ -273,22 +271,24 @@ class Agent:
             ewc_loss_log.append(ewc_loss)
             
             # save active model weights and optimizer status every 100_000 steps
-            if (steps_idx - last_saved_steps_idx) >= 500_000:
-                print(f"Save KB in step-# with updates = {updates}: {steps_idx}\n")
-                self.save_kb(steps_idx)
-                last_saved_steps_idx = steps_idx
+            if (self.steps_idx - last_saved_steps_idx) >= 500_000:
+                print(f"Save KB in step-# with updates = {updates}: {self.steps_idx}\n")
+                self.save_kb(self.steps_idx)
+                last_saved_steps_idx = self.steps_idx
             
-            if steps_idx % 10000 == 0: # log every 10000 steps
+            if self.steps_idx % 10000 == 0: # log every 10000 steps
                 
                 # calcualte mean
                 total_loss_mean = np.mean(total_loss_log)
                 kl_loss_mean = np.mean(kl_loss_log)
                 ewc_loss_mean = np.mean(ewc_loss_log)
                 
+                print(f" total_loss mean-100-{total_loss_mean}, kl_loss mean-100-{kl_loss_mean}, ewc_loss mean-100-{ewc_loss_mean}")
+                
                 wandb.log({"Distillation loss (KL Loss + EWC loss)": total_loss_mean,
                            "KL Loss": kl_loss_mean,
                            "EWC loss": ewc_loss_mean,
-                           "Steps Compress": steps_idx})
+                           "Steps Compress": self.steps_idx})
 
     def save_active(self, step):
         """step + self.inc_active = the last digit adds the step size to the step size

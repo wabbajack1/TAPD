@@ -32,8 +32,8 @@ class Worker(object):
         self.env_dict["Compress"] = env
         
         self.state = {}
-        self.state["Progress"] = self.FloatTensor(self.env_dict["Progress"].reset()).to(self.device)
-        self.state["Compress"] = self.FloatTensor(self.env_dict["Compress"].reset()).to(self.device)
+        self.state["Progress"] = self.FloatTensor(self.env_dict["Progress"].reset())
+        self.state["Compress"] = self.FloatTensor(self.env_dict["Compress"].reset())
         
         self.model_dict = model_dict
         self.batch_size = batch_size
@@ -68,7 +68,7 @@ class Worker(object):
         self.batch_size_mode = self.batch_size if mode == "Progress" else batch_size
 
         for collect in range(self.batch_size_mode):
-            action = self.model_dict[mode].act(self.state[mode].unsqueeze(0))
+            action = self.model_dict[mode].act(self.state[mode].unsqueeze(0).to(self.device))
             next_state, reward, done, info = self.env_dict[mode].step(action)
             self.episode_reward[mode] += reward[1]
             states.append(self.state[mode]) 
@@ -88,13 +88,13 @@ class Worker(object):
                     wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), f"Frame-# Training {self.env_dict[mode].spec.id}":frame_number[mode][self.env_name]}, commit=False)
                     self.episode_reward[mode] = 0
                   
-                self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()).to(self.device) # no-op step to advance from terminal/lost life state, when lives > 0
+                self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()) # no-op step to advance from terminal/lost life state, when lives > 0
             else:
-                self.state[mode] = self.FloatTensor(next_state).to(self.device)
+                self.state[mode] = self.FloatTensor(next_state)
             
-            #print(f"Process end {collect}, Rank {self.rank}, frame {info}")    
+            # print(f"Process end {collect}, Rank {self.rank}, frame {info}")    
         values = self._compute_true_values(states, rewards, dones, mode=mode)
-        #print(values.shape, self.rank)
+        # print(values.shape, self.rank)
         return states, actions, values
  
     def _compute_true_values(self, states, rewards, dones, mode):
@@ -110,16 +110,16 @@ class Worker(object):
             R: discounted return
         """
         R = []
-        rewards = self.FloatTensor(rewards).to(self.device)
-        dones = self.FloatTensor(dones).to(self.device)
-        states = torch.stack(states).to(self.device)
+        rewards = self.FloatTensor(rewards)
+        dones = self.FloatTensor(dones)
+        states = torch.stack(states)
         
         #print(states[-1].shape, states.shape, dones.shape, rewards.shape)
         #print(f"rewards {rewards.shape}, states {states.shape}, dones {dones.shape}")
         if dones[-1] == True:
             next_value = rewards[-1]
         else:
-            next_value = self.model_dict[mode].get_critic(states[-1].unsqueeze(0)).squeeze(1)
+            next_value = self.model_dict[mode].get_critic(states[-1].unsqueeze(0).to(self.device)).squeeze(1)
         
         R.append(next_value)
         for i in reversed(range(0, len(rewards) - 1)):
@@ -131,4 +131,4 @@ class Worker(object):
             
         R.reverse()
         
-        return self.FloatTensor(R).to(self.device).unsqueeze(1)
+        return self.FloatTensor(R).unsqueeze(1)
