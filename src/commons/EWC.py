@@ -15,7 +15,7 @@ def variable(t: torch.Tensor, use_cuda=True, **kwargs):
     return Variable(t, **kwargs)
 
 class EWC(object):
-    def __init__(self, agent:None, model: nn.Module, ewc_lambda=175, ewc_gamma=0.4, batch_size_fisher=32, device=None, env_name:Optional[str] = None):
+    def __init__(self, agent:None, model: nn.Module, ewc_lambda=175, ewc_gamma=0.4, batch_size_fisher=32, ewc_start_timestep_after=1000, device=None, env_name:Optional[str] = None):
         """The online ewc algo 
         Args:
             task (None): the task (in atari a env) for calculating the importance of task w.r.t the paramters
@@ -28,7 +28,7 @@ class EWC(object):
         else:
             self.FloatTensor = torch.FloatTensor
             
-        self.ewc_start_timestep = 1000
+        self.ewc_start_timestep = ewc_start_timestep_after
         self.model = model
         self.device = device
         self.ewc_gamma = ewc_gamma
@@ -38,6 +38,7 @@ class EWC(object):
         self.batch_size_fisher = batch_size_fisher
 
         self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad and "critic" not in n}
+        # self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad}
         self.mean_params = {}
         self.old_fisher = None
         self.fisher = self.calculate_fisher() # calculate the importance of params for the previous task
@@ -57,31 +58,31 @@ class EWC(object):
         states, actions, true_values = self.agent.memory.pop_all()
         self.agent.memory.delete_memory()
         dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
-        i = 0
-        for batch_states, batch_actions, batch_true_values in dataloader:
-            #print("Parameters:", len(dataset), len(dataloader), batch_states.shape, len(dataloader)/self.agent.no_of_workers, self.batch_size_fisher)
-            # print("batch size ewc", batch_states.shape, batch_actions.shape, batch_true_values.shape)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size_fisher, shuffle=False)
+
+        for states, actions, true_values in dataloader:
+            #print("Parameters:", len(dataset), len(dataloader), states.shape, len(dataloader)/self.agent.no_of_workers, self.batch_size_fisher)
+            # print("batch size ewc", states.shape, actions.shape, true_values.shape)
             
             # Calculate gradients
             self.model.zero_grad()
             
-            batch_states = batch_states.to(self.device)
-            batch_actions = batch_actions.to(self.device)
-            batch_true_values = batch_true_values.to(self.device)
-            values, log_probs, entropy = self.model.evaluate_action(batch_states, batch_actions)
+            states = states.to(self.device)
+            actions = actions.to(self.device)
+            true_values = true_values.to(self.device)
+            values, log_probs, entropy = self.model.evaluate_action(states, actions)
             
             values = torch.squeeze(values)
             log_probs = torch.squeeze(log_probs)
             entropy = torch.squeeze(entropy)
-            batch_true_values = torch.squeeze(batch_true_values)
+            true_values = torch.squeeze(true_values)
             
-            advantages = batch_true_values - values
-            # critic_loss = advantages.pow(2).mean()
+            advantages = true_values - values
+            critic_loss = advantages.pow(2).mean()
             
             actor_loss = -(log_probs * advantages.detach()).mean()
-            # total_loss = ((0.5 * critic_loss) + actor_loss - (0.01 * entropy)).backward()
-            actor_loss.backward() # calc the gradients and store it in grad
+            total_loss = ((0.5 * critic_loss) + actor_loss - (0.01 * entropy)).backward()
+            # actor_loss.backward() # calc the gradients and store it in grad
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1)
             
             # Update Fisher information matrix
@@ -89,16 +90,18 @@ class EWC(object):
             for name, param in self.model.named_parameters():
                 if param.grad is not None and "critic" not in name:
                     if self.old_fisher is not None and name in self.old_fisher:
-                        fisher[name] += self.ewc_gamma * self.old_fisher[name] + param.grad.detach().clone().pow(2)
+                        fisher[name] += self.ewc_gamma * self.old_fisher[name] + param.grad.data.clone().pow(2)
                     else:
-                        fisher[name] += param.grad.detach().clone().pow(2)
-        
+                        fisher[name] += param.grad.data.clone().pow(2)
+
+        print(f"len of dataloader {len(dataloader)}, no of workers {self.agent.no_of_workers}")
         for name in fisher:
-            fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data)) / torch.std(fisher[name].data + 1e-08)
-            # fisher[name].data /= self.agent.no_of_workers
-            print(name, fisher[name].data)
+            # fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data)) / (torch.std(fisher[name].data) + 1e-16)
+            fisher[name].data /= float(len(dataloader))
         
         self.old_fisher = fisher.copy()
+        self.model.train()
+        
         return fisher
     
     def penalty(self, model: nn.Module):
@@ -119,16 +122,11 @@ class EWC(object):
                 # fisher = torch.sqrt(self.fisher[n] + 1e-08)
                 fisher = self.fisher[n]
                 loss += (fisher * (p - self.mean_params[n]).pow(2)).sum()
-                fisher_sum += self.fisher[n].sum()
+                fisher_sum += abs(self.fisher[n]).sum()
                 mean_params_sum += self.mean_params[n].sum()
                 # print(n, torch.sqrt(self.fisher[n] + 1e-05))
         
-        # euclidean_distance = compute_distance(model, self.mean_model, "euclidean")
-        # cosine_similarity = compute_distance(model, self.mean_model, "cosine")
-        
-        # print(f"Euclidean Distance: {euclidean_distance}")
-        # print(f"Cosine Similarity: {cosine_similarity}")
-        print("EWC Loss", (self.ewc_lambda * loss).item(), f"EWC lambda {self.ewc_lambda}", f"Fisher: {fisher_sum.sum()}", f"mean params: {mean_params_sum.sum()}")
+        print("EWC Loss", (self.ewc_lambda * loss).item(), "loss", loss.item(), f"EWC lambda {self.ewc_lambda}", f"Fisher: {fisher_sum.sum()}", f"mean params: {mean_params_sum.sum()}")
         return self.ewc_lambda * loss
     
     def update(self, agent, model, env_name):

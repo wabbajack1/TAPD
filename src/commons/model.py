@@ -5,17 +5,6 @@ import os
 import numpy as np
 import random
 
-def weight_reset(m):
-    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        m.reset_parameters()
-
-def init_weights(m):
-    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        print("--->")
-        nn.init.xavier_uniform_(m.weight.data)
-        if m.bias is not None:
-            nn.init.zeros_(m.bias.data)
-
 class Model(nn.Module):
     def __init__(self, action_space, env):
         super(Model, self).__init__()
@@ -103,6 +92,15 @@ class KB_Module(nn.Module):
             nn.Softmax(dim=-1)
         )
 
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                # nn.init.kaiming_uniform_(module.weight)
+                nn.init.constant_(module.bias, 0)
+
     def forward(self, x):
         x1 = self.layer1(x)
         x2 = self.layer2(x1)
@@ -177,7 +175,6 @@ class Active_Module(nn.Module):
         self.lateral_connections = lateral_connections
         self.device = device
 
-
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=8, stride=4),
             nn.ReLU(),
@@ -208,6 +205,16 @@ class Active_Module(nn.Module):
         
         self.adaptor = Adaptor(feature_size) # init adaptor layers like in prognet
 
+        self._initialize_weights()
+
+    
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                # nn.init.kaiming_uniform_(module.weight)
+                nn.init.constant_(module.bias, 0)
+
     def reset_weights(self, seed=None):
         print("===== RESET WEIGHTS =====")
         if seed is not None:
@@ -225,7 +232,7 @@ class Active_Module(nn.Module):
         for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 m.reset_parameters()
-                #print("--->", name, m)
+                #print(f"Name of Tensor {name}: {m})
 
     def forward(self, x, previous_out_layers=None):
 
@@ -335,20 +342,18 @@ class Adaptor(nn.Module):
         return y1, y2, y3, y4, y5
 
 class ICM(nn.Module):
-    def __init__(self, state_dim, action_dim, forward_hidden_dim):
+    def __init__(self, state_dim, action_size):
         super(ICM, self).__init__()
 
         self.forward_model = nn.Sequential(
-            nn.Linear(state_dim + action_dim, forward_hidden_dim),
+            nn.Linear(state_dim + action_size, 1024),
             nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLu(),
-            nn.Linear(forward_hidden_dim, state_dim),
+            nn.Linear(1024, state_dim),
         )
 
     def forward(self, state, action):
         # Forward model
-        action_one_hot = F.one_hot(action, num_classes=predicted_action.shape[-1])
+        action_one_hot = nn.functional.one_hot(action, num_classes=18)
         state_action = torch.cat([state, action_one_hot], dim=-1)
         predicted_next_state = self.forward_model(state_action)
 
@@ -452,66 +457,5 @@ class ProgressiveNet(nn.Module):
         return same_values
     
 if __name__ == "__main__":
-    import sys
-    # import os
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-    import runner
-    # from torchviz import make_dot
-    # import copy
 
-    nn1 = KB_Module("cpu")
-    # #nn2 = Adaptor()
-    nn3 = Active_Module("cpu", lateral_connections=False)
-
-    # nn_super = ProgressiveNet(nn1, nn3)
-    # #print(nn_super)
-
-    # optimizer_ac1 = torch.optim.SGD(nn1.parameters(), lr=0.8, momentum=0.9)
-    # optimizer_ac2 = torch.optim.SGD(nn3.parameters(), lr=0.8, momentum=0.9)
-    # #optimizer_super = torch.optim.SGD(nn_super.parameters(), lr=0.8, momentum=0.9)
-
-    # loss = torch.nn.MSELoss()
-    # old_params = nn_super.store_parameters(nn_super) 
-   
-    # for i in range(0, 2):
-    #     optimizer_ac1.zero_grad()
-    #     optimizer_ac2.zero_grad()
-
-    #     if i == 1:
-    #         nn_super.freeze_model("model_b")
-    #         old_params = nn_super.store_parameters(nn_super.model_b)
-
-    #     input = torch.randn(10, 1, 84, 84)
-    #     target1 = torch.randn(10, 6)
-    #     target2 = torch.randn(10, 1)
-
-    #     y1, y2, y3, y4 = nn_super(input)
-
-    #     loss1 = loss(y2, target1)
-    #     loss2 = loss(y1, target2)
-    #     total_loss = loss1 + loss2
-    #     total_loss.backward()
-    #     optimizer_ac1.step()
-    #     #optimizer_ac2.step()
-
-    #     if i == 1:
-    #         if nn_super.compare_parameters(old_params, nn_super.model_b):
-    #             print("Parameter values are the same.")
-    #         else:
-    #             print("Parameter values have changed.")
-
-    # input = torch.randn(10, 1, 84, 84)
-
-    # o1 = nn1(input)
-    # weight_reset(nn1)
-    # o2 = nn1(input)
-
-    # print(torch.equal(o1[1], o2[1]))
-    nn3.reset_weights()
-
-
-    #print(y1.shape, y2.shape, y3.shape, y4.shape)
-    #print(x.shape, y.shape, critic_output.shape, actor_output.shape, x4.shape)
-
-    
     pass

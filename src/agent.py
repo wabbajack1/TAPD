@@ -47,6 +47,8 @@ class Agent:
         self.ewc_loss = 0
         self.resume = resume # continue with training state before crash
 
+        self.steps_idx_overall = 0 # for evaluation
+
         self.device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
         print(f"Cuda available: {torch.cuda.is_available()}, Set to: {use_cuda}")
         if self.device.type == 'cuda':
@@ -150,10 +152,11 @@ class Agent:
         kl_loss = criterion(log_probs_kb.unsqueeze(0), log_probs_active.unsqueeze(0).detach())
         
         # calc ewc loss after every update and protected the weights w.r.t. the previous task
-        if ewc is not None and self.steps_idx >= ewc.ewc_start_timestep:
+        self.steps_idx_overall += self.batch_size * len(self.workers)
+        if ewc is not None and self.steps_idx_overall >= ewc.ewc_start_timestep:
             # The second argument, crucial for EWC, guides parameter space during training using old parameters as reference to prevent excessive divergence
             self.ewc_loss = ewc.penalty(self.kb_model)
-            total_loss = kl_loss + self.ewc_loss.item()
+            total_loss = kl_loss + self.ewc_loss
         else:
             total_loss = kl_loss
 
@@ -217,6 +220,7 @@ class Agent:
                 last_saved_steps_idx = self.steps_idx
             
             if self.steps_idx % 10000 == 0: # log every 10000 steps
+                print(f"Progress timesteps in the environment: {self.steps_idx}")
                 value_mean = np.mean(value_log)
                 critic_loss_mean = np.mean(critic_loss_log)
                 actor_loss_mean = np.mean(actor_loss_log)
@@ -265,10 +269,12 @@ class Agent:
             total_loss, kl_loss, ewc_loss = self.compress(ewc) # train
             updates += 1
             
+            
             # log incoming data
             total_loss_log.append(total_loss)
             kl_loss_log.append(kl_loss)
             ewc_loss_log.append(ewc_loss)
+
             
             # save active model weights and optimizer status every 100_000 steps
             if (self.steps_idx - last_saved_steps_idx) >= 500_000:
@@ -277,13 +283,14 @@ class Agent:
                 last_saved_steps_idx = self.steps_idx
             
             if self.steps_idx % 10000 == 0: # log every 10000 steps
-                
+                print(f"Compress timesteps in the environment: {self.steps_idx}")
+
                 # calcualte mean
                 total_loss_mean = np.mean(total_loss_log)
                 kl_loss_mean = np.mean(kl_loss_log)
                 ewc_loss_mean = np.mean(ewc_loss_log)
                 
-                print(f" total_loss mean-100-{total_loss_mean}, kl_loss mean-100-{kl_loss_mean}, ewc_loss mean-100-{ewc_loss_mean}")
+                print(f"total_loss mean-100: {total_loss_mean}, kl_loss mean-100: {kl_loss_mean}, ewc_loss mean-100: {ewc_loss_mean}")
                 
                 wandb.log({"Distillation loss (KL Loss + EWC loss)": total_loss_mean,
                            "KL Loss": kl_loss_mean,

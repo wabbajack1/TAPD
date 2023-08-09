@@ -1,0 +1,14 @@
+version: '3'
+services:
+  app1:
+    build: .
+    command: venv/bin/python runner.py -w 4 -b 20 -load_step_active 10000000 -load_step_kb 100000 -load_path .. -bF 32 -bFnumber 100 -ewclambda 400 -ewc_start_timestep_after 5000 -mfc 10000 -mfp 1 -eval 20 --seed 11
+  app2:
+    build: .
+    command: venv/bin/python runner.py -w 4 -b 20 -load_step_active 10000000 -load_step_kb 100000 -load_path .. -bF 32 -bFnumber 100 -ewclambda 400 -ewc_start_timestep_after 5000 -mfc 10000 -mfp 1 -eval 20 --seed 44
+  app3:
+    build: .
+    command: venv/bin/python runner.py -w 4 -b 20 -load_step_active 10000000 -load_step_kb 100000 -load_path .. -bF 32 -bFnumber 100 -ewclambda 400 -ewc_start_timestep_after 5000 -mfc 10000 -mfp 1 -eval 20 --seed 32
+  app4:
+    build: .
+    command: venv/bin/python runner.py -w 4 -b 20 -load_step_active 10000000 -load_step_kb 100000 -load_path .. -bF 32 -bFnumber 100 -ewclambda 400 -ewc_start_timestep_after 5000 -mfc 10000 -mfp 1 -eval 20 --seed 38

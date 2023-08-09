@@ -1,7 +1,4 @@
-import sys
-sys.path.append("../venv/lib/python3.10/site-packages/")
-import agent
-import gym
+#!/Users/kerekmen/miniconda3/envs/agnostic_rl/bin/python
 import wandb
 import argparse
 import torch
@@ -21,7 +18,7 @@ from commons.model import weight_reset, init_weights
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from typing import Optional
 import time
-from utils import environment_wrapper, test_disitillation
+from utils import evaluate, test_disitillation
 
 print(f"Torch version: {torch.__version__}")
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
@@ -44,11 +41,13 @@ def set_seed(seed: int = 44) -> None:
     print(f"Random seed set as {seed}\n")
 
 def main(args):
+
     wandb.init(
         # set the wandb project where this run will be logged
         project="atari_single_task",
         entity="agnostic",
         config=args,
+        notes=args.notes,
         mode="disabled",
         #id="nd07r8xn",
         #resume="allow"
@@ -82,6 +81,7 @@ def main(args):
     load_path = wandb.config["load_path"]
     mode = wandb.config["mode"]
     visits = wandb.config["visits"]
+    ewc_start = wandb.config["ewc_start_timestep_after"]
 
     # create path for storing meta data of the agent (hyperparams, video)
     save_dir = Path("../checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -96,9 +96,9 @@ def main(args):
         agent.load_kb(load_path, load_step_kb, mode)
    
     #progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
-    test_disitillation(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
+    test_disitillation(agent=agent, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, ewc_start=ewc_start, seed=seed, eval_after_compress=True)
 
-def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, seed):
+def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, ewc_start, seed):
     visits = visits # visit each task x times
     for visit in range(visits):
         
@@ -149,7 +149,7 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
                 
             if agent.ewc_init:
                 # take the latest env and calculate the fisher
-                ewc = EWC(agent=agent, model=agent.kb_model, ewc_lambda=ewclambda, ewc_gamma=ewcgamma, device=agent.device, env_name=env_name)
+                ewc = EWC(agent=agent, model=agent.kb_model, ewc_lambda=ewclambda, ewc_gamma=ewcgamma, device=agent.device, env_name=env_name, ewc_start_timestep_after=ewc_start)
                 agent.ewc_init = False
             else: # else running calulaction taken the last fisher into consideration
                 ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
@@ -316,6 +316,20 @@ if __name__ == "__main__":
         type=int,
         default=1,
         help="How many times should the tasks visited?")
+    
+    parser.add_argument(
+        "-ewc_start_timestep_after",
+        "--ewc_start_timestep_after",
+        type=int,
+        default=1000,
+        help="Which timestep should the ewc loss be applied to the total loss as a regularizer?")
+    
+    parser.add_argument(
+        "-n",
+        "--notes",
+        type=str,
+        default="",
+        help="Specify the information for this run.")
     
     
     

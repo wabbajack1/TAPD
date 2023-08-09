@@ -22,9 +22,9 @@ steps = {}
 ################################
 ## Model-inspection functions ##
 ################################
-def evaluate(model, env_name, save_dir, num_episodes, seed):
+def evaluate(model, env_name, save_dir, num_episodes):
     
-    # collect frame across all visits
+    # collect frame and steps across all visits
     global frame_number_eval
     global steps
     
@@ -57,9 +57,11 @@ def evaluate(model, env_name, save_dir, num_episodes, seed):
                 else:
                     frame_number_eval[env_name] += info["episode_frame_number"]
                     
-                wandb.log({f"Evaluation score-{env_name}-{model.__class__.__name__}": episode_reward, f"Frame-# Evaluation-{env_name}": frame_number_eval[env_name], f"Steps-# Evaluation-{env_name}":steps[env_name]})
+                wandb.log({f"Evaluation_score_{env_name}-{model.__class__.__name__}": episode_reward, f"Frame-# Evaluation-{env_name}": frame_number_eval[env_name], f"Steps-# Evaluation-{env_name}":steps[env_name]})
                 
         evaluation_scores.append(episode_reward)
+
+    wandb.log({f"Avg_evaluation_score_{env_name}-{model.__class__.__name__}": np.mean(evaluation_scores)})
 
     return np.mean(evaluation_scores) #, np.mean(evaluation_scores_original)
 
@@ -93,20 +95,15 @@ def print_model_info(model, title="MODEL"):
     _ = count_parameters(model)
     print(90*"-" + "\n\n")
 
-def test_disitillation(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, seed):
+def test_disitillation(agent, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, ewc_start, seed, eval_after_compress=True):
     
     # see eval before distillation
-    print(20*"=", "Evaluation started", 20*"=")
-    for env_name_eval in ["PongNoFrameskip-v4", "BeamRiderNoFrameskip-v4"]:
-        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
-        avg_score = evaluation_data
-        print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
-    print(20*"=","Evaluation completed", 20*"=")
+    _evaluate(agent, save_dir, evaluation_epsiode)
     
     # compute fisher for pong
+    print(10*"#", " Collect rollout for EWC ", 10*"#")
     print("############## Creating workers ##############")
     agent.reinitialize_workers("PongNoFrameskip-v4")
-            
     for k in range(batch_number_fisher):
         with ThreadPoolExecutor(max_workers=len(agent.workers)) as executor:
             # Submit tasks to the executor and collect results based on the current policy of kb knowledge
@@ -125,7 +122,7 @@ def test_disitillation(visits, agent, environments, max_steps_progress, max_step
         
     if agent.ewc_init:
         # take the latest env and calculate the fisher
-        ewc = EWC(agent=agent, model=agent.kb_model, ewc_lambda=ewclambda, ewc_gamma=ewcgamma, batch_size_fisher=batch_size_fisher, device=agent.device, env_name="PongNoFrameskip-v4")
+        ewc = EWC(agent=agent, model=agent.kb_model, ewc_lambda=ewclambda, ewc_gamma=ewcgamma, batch_size_fisher=batch_size_fisher, device=agent.device, ewc_start_timestep_after=ewc_start, env_name="PongNoFrameskip-v4")
         agent.ewc_init = False
     # else: # else running calulaction taken the last fisher into consideration
     #     ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
@@ -134,16 +131,26 @@ def test_disitillation(visits, agent, environments, max_steps_progress, max_step
     print("Distillation + EWC")
     print("############## Creating workers ##############")
     agent.reinitialize_workers("BeamRiderNoFrameskip-v4")
-    agent.compress_training(max_steps_compress, ewc)
-    
-    # see eval after distillation
+
+    if eval_after_compress == False:
+        until_steps = 100000
+        for _ in range(0, max_steps_compress, until_steps):
+            agent.compress_training(until_steps, ewc)
+            _evaluate(agent, save_dir, evaluation_epsiode)
+    else:
+        agent.compress_training(max_steps_compress, ewc)
+        _evaluate(agent, save_dir, evaluation_epsiode)
+    pass
+
+def _evaluate(agent, save_dir, evaluation_epsiode, task_1="PongNoFrameskip-v4", task_2="BeamRiderNoFrameskip-v4"):
+    assert "NoFrameskip" in task_1 or "NoFrameskip" in task_2, "The string does not contain 'NoFrameskip'"
+
     print(20*"=", "Evaluation started", 20*"=")
-    for env_name_eval in ["PongNoFrameskip-v4", "BeamRiderNoFrameskip-v4"]:
-        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
-        avg_score = evaluation_data
-        print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
+    for env_name_eval in [task_1, task_2]:
+        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode)
+        print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Evaluation_score: {evaluation_data}")
+        wandb.log({f"Evaluation_score_{env_name_eval}":evaluation_data})
     print(20*"=","Evaluation completed", 20*"=")
-            
     pass
 
 def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
