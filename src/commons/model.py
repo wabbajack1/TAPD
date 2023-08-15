@@ -5,64 +5,27 @@ import os
 import numpy as np
 import random
 
-class Model(nn.Module):
-    def __init__(self, action_space, env):
-        super(Model, self).__init__()
-        self.features = torch.nn.Sequential(
-            torch.nn.Conv2d(1, 32, kernel_size=8, stride=4),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            torch.nn.ReLU()
-        )
-        feature_size = self.features(
-            torch.zeros(1, *env.observation_space.shape)).cuda().view(1, -1).size(1)
-        
-        self.critic = torch.nn.Sequential(
-            torch.nn.Linear(feature_size, 512),
-            torch.nn.ReLU(),
-            torch.nn.Linear(512, 1)
-        )
-        self.actor = torch.nn.Sequential(
-            torch.nn.Linear(feature_size, 512),
-            torch.nn.ReLU(),
-            torch.nn.Linear(512, action_space),
-            torch.nn.Softmax(dim=-1)
-        )
-    
-    def forward(self, x):
-        x = self.features(x)
-        x = x.view(x.size(0), -1)
-        value = self.critic(x)
-        actions = self.actor(x)
-        return value, actions
-    
-    def get_critic(self, x):
-        x = self.features(x)
-        x = x.view(x.size(0), -1)
-        return self.critic(x)
-    
-    def evaluate_action(self, state, action):
-        value, actor_features = self.forward(state)
-        dist = torch.distributions.Categorical(actor_features)
-        
-        log_probs = dist.log_prob(action).view(-1, 1)
-        entropy = dist.entropy().mean()
-        
-        return value, log_probs, entropy
-    
-    def act(self, state):
-        value, actor_features = self.forward(state)
-        dist = torch.distributions.Categorical(actor_features)
-        
-        chosen_action = dist.sample()
-        return chosen_action.item()
+class BaseConv(nn.Module):
+    def __init__(self, num_inputs):
+        super(BaseConv, self).__init__()
+        self.conv = nn.Sequential(nn.Conv2d(num_inputs, 64, 3, stride=2, padding=1),
+                                  nn.ReLU(),
+                                  nn.Conv2d(64, 64, 3, stride=2, padding=1),
+                                  nn.ReLU(),
+                                  nn.Conv2d(64, 64, 3, stride=2, padding=1),
+                                  nn.ReLU(),
+                                  nn.Conv2d(64, 64, 3, stride=2, padding=1),
+                                  nn.ReLU()
+                                  )
 
+    def forward(self, x):
+        return self.conv(x)
+    
 class KB_Module(nn.Module):
     def __init__(self, device):
         super(KB_Module, self).__init__()
         self.device = device
+        feature_size = 64*7*7
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=8, stride=4),
@@ -77,7 +40,7 @@ class KB_Module(nn.Module):
             nn.ReLU()
         )
 
-        feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *(1, 84, 84))))).to(device).view(1, -1).size(1)
+        # feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *(1, 84, 84))))).to(device).view(1, -1).size(1)
 
         self.critic = nn.Sequential(
             nn.Linear(feature_size, 512),
@@ -93,7 +56,19 @@ class KB_Module(nn.Module):
         )
 
         self._initialize_weights()
-    
+
+    def set_seed(self, seed: int = 44) -> None:
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        # When running on the CuDNN backend, two further options must be set
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        # Set a fixed value for the hash seed
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        print(f"Random seed set as {seed}\n")
+
     def _initialize_weights(self):
         for module in self.modules():
             if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
@@ -174,6 +149,7 @@ class Active_Module(nn.Module):
         # Define feature layers with lateral connections
         self.lateral_connections = lateral_connections
         self.device = device
+        feature_size = 64*7*7
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=8, stride=4),
@@ -188,7 +164,7 @@ class Active_Module(nn.Module):
             nn.ReLU()
         )
 
-        feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *(1, 84, 84))))).to(device).view(1, -1).size(1)
+        # feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *(1, 84, 84))))).to(device).view(1, -1).size(1)
 
         self.critic = nn.Sequential(
             nn.Linear(feature_size, 512),
@@ -326,12 +302,16 @@ class Adaptor(nn.Module):
         self.conv1_adaptor = nn.Conv2d(32, 32, kernel_size=1)
         self.conv2_adaptor = nn.Conv2d(64, 64, kernel_size=1)
         self.conv3_adaptor = nn.Conv2d(64, 64, kernel_size=1)
+        
         self.critic_adaptor = nn.Sequential(
             nn.Linear(feature_size, 512),
             nn.ReLU())
+        
         self.actor_adaptor = nn.Sequential(
             nn.Linear(feature_size, 512),
             nn.ReLU())
+        
+        self._initialize_weights()
 
     def forward(self, x1, x2, x3, x4):
         y1 = self.conv1_adaptor(x1)
@@ -340,47 +320,76 @@ class Adaptor(nn.Module):
         y4 = self.critic_adaptor(x4)
         y5 = self.actor_adaptor(x4)
         return y1, y2, y3, y4, y5
+    
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                # nn.init.kaiming_uniform_(module.weight)
+                nn.init.constant_(module.bias, 0)
 
 class ICM(nn.Module):
-    def __init__(self, state_dim, action_size):
+    def __init__(self, num_inputs, num_actions=18):
         super(ICM, self).__init__()
+        self.conv = BaseConv(num_inputs)
+        self.state_dim = 64 * 6 * 6
+        self.num_actions = num_actions
 
-        self.forward_model = nn.Sequential(
-            nn.Linear(state_dim + action_size, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, state_dim),
+        self.inverse_net = nn.Sequential(
+            nn.Linear(self.state_dim * 2, 1024),
+            nn.LeakyReLU(),
+            nn.Linear(1024, num_actions)
         )
 
-    def forward(self, state, action):
-        # Forward model
-        action_one_hot = nn.functional.one_hot(action, num_classes=18)
-        state_action = torch.cat([state, action_one_hot], dim=-1)
-        predicted_next_state = self.forward_model(state_action)
+        self.forward_net = nn.Sequential(
+            nn.Linear(self.state_dim + self.num_actions, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, self.state_dim),
+        )
 
-        return predicted_next_state
+    def one_hot(self, action):
+        action_oh = torch.zeros((1, self.num_actions))  # one-hot action
+        action_oh[0, action] = 1
+        return action_oh
+
+    def forward(self, state, next_state, action):
+        # Forward model
+        phi_state = self.conv(state)
+        phi_next_state = self.conv(next_state)
+        phi_state = phi_state.view(-1, self.state_dim)
+        phi_next_state = phi_next_state.view(-1, self.state_dim)
+        action_oh = self.one_hot(action)
+        state_action = torch.cat([phi_state, action_oh], dim=1)
+        state_nextstate = torch.cat([phi_state, phi_next_state], 1)
+
+        return self.inverse_net(state_nextstate), self.forward_net(state_action), phi_next_state
 
 class ProgressiveNet(nn.Module):
     def __init__(self, model_a, model_b):
         super(ProgressiveNet, self).__init__()
         self.model_a = model_a
         self.model_b = model_b
-        #self.icm = ICM(state_dim, action_dim, forward_hidden_dim)
+        # self.icm = ICM(1)
         self.icm = None
         
-        wandb.watch(self, log_freq=1000, log="all", log_graph=True)
+        try:
+            wandb.watch(self, log_freq=1000, log="all", log_graph=True)
+        except:
+            pass
 
     def forward(self, x, action=None):
         x1, x2, x3, x4, critic_output_model_a, actor_output_model_a = self.model_a(x)
         critic_output_model_b, actor_output_model_b = self.model_b(x, [x1, x2, x3, x4])
         
         if action is not None:
-            predicted_next_state = self.icm(x, action)
+            pred_phi, phi = self.icm(x, action)
             return (
                 critic_output_model_b,
                 actor_output_model_b,
                 critic_output_model_a,
                 actor_output_model_a,
-                predicted_next_state
+                pred_phi,
+                phi
             )
 
         return critic_output_model_b, actor_output_model_b, critic_output_model_a, actor_output_model_a
@@ -455,7 +464,4 @@ class ProgressiveNet(nn.Module):
                 same_values = False
                 print(f"Parameter '{name}' has changed.")
         return same_values
-    
-if __name__ == "__main__":
 
-    pass

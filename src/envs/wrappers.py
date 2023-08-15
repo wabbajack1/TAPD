@@ -130,13 +130,13 @@ class ClipRewardEnv(gym.RewardWrapper):
         return np.sign(reward), reward
 
 class WarpFrame(gym.ObservationWrapper):
-    def __init__(self, env):
+    def __init__(self, env, seed):
         """Warp frames to 84x84 as done in the Nature paper and later work."""
         gym.ObservationWrapper.__init__(self, env)
         self.width = 84
         self.height = 84
         self.observation_space = spaces.Box(low=0, high=255,
-            shape=(self.height, self.width, 1), dtype=np.uint8)
+            shape=(self.height, self.width, 1), dtype=np.uint8, seed=seed)
 
     def observation(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
@@ -144,7 +144,7 @@ class WarpFrame(gym.ObservationWrapper):
         return frame[:, :, None]
 
 class FrameStack(gym.Wrapper):
-    def __init__(self, env, k):
+    def __init__(self, env, k, seed):
         """Stack k last frames.
         Returns lazy array, which is much more memory efficient.
         See Also
@@ -155,7 +155,7 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * k), dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * k), dtype=np.uint8, seed=seed)
 
     def reset(self):
         ob = self.env.reset()
@@ -216,33 +216,33 @@ def make_atari(env_id, full_action_space=False):
     env = MaxAndSkipEnv(env, skip=4)
     return env
 
-def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
+def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False, seed=None):
     """Configure environment for DeepMind-style Atari.
     """
     if episode_life:
         env = EpisodicLifeEnv(env)
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
-    env = WarpFrame(env)
+    env = WarpFrame(env, seed=seed)
     if scale:
         env = ScaledFloatFrame(env)
     if clip_rewards:
         env = ClipRewardEnv(env)
     if frame_stack:
-        env = FrameStack(env, 4)
+        env = FrameStack(env, 4, seed=seed)
     return env
 
 class ImageToPyTorch(gym.ObservationWrapper):
     """
     Image shape to num_channels x weight x height
     """
-    def __init__(self, env):
+    def __init__(self, env, seed):
         super(ImageToPyTorch, self).__init__(env)
         old_shape = self.observation_space.shape
-        self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(old_shape[-1], old_shape[0], old_shape[1]), dtype=np.uint8)
+        self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(old_shape[-1], old_shape[0], old_shape[1]), dtype=np.uint8, seed=seed)
 
     def observation(self, observation):
         return np.swapaxes(observation, 2, 0)
     
-def wrap_pytorch(env):
-    return ImageToPyTorch(env)
+def wrap_pytorch(env, seed):
+    return ImageToPyTorch(env, seed=seed)

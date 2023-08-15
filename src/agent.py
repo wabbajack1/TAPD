@@ -8,7 +8,7 @@ from commons.memory.CustomDataset import CustomDataset
 from torch.utils.data.dataloader import DataLoader
 import numpy as np
 import torch.multiprocessing as mp
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from collections import deque
 
@@ -75,7 +75,7 @@ class Agent:
         return worker
 
     def create_worker_parallel(self, env_name):
-        """ create workers for the env
+        """ Deprecated due to reproduciblity issues. create workers for the env
 
         Args:
             env_name (string): env name
@@ -94,8 +94,7 @@ class Agent:
 
     def reinitialize_workers(self, env_name):
         """Reinitialize the workers for a new environment."""
-        self.workers = []
-        self.create_worker_parallel(env_name=env_name)
+        self.workers = [self.create_worker(i, env_name) for i in range(self.no_of_workers)]
 
     def progress(self):
         # fetch experience
@@ -234,6 +233,71 @@ class Agent:
                     "Steps Progress": self.steps_idx
                 })
 
+    def progress_training(self, max_steps):
+        # watch variables
+        self.steps_idx = 0
+        updates = 0
+        last_saved_steps_idx = 0
+        
+        # Initialize deque with max length 100 for logging data
+        value_log = deque(maxlen=100)
+        critic_loss_log = deque(maxlen=100)
+        actor_loss_log = deque(maxlen=100)
+        entropy_log = deque(maxlen=100)
+        
+        # freeze and train model
+        self.active_model.train()
+        self.kb_model.freeze_parameters()
+        self.active_model.unfreeze_parameters()
+        
+        # iterate over the specifiec steps in the environment
+        while self.steps_idx < max_steps:
+            with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
+                # Submit tasks to the executor and collect results
+                futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
+                batches = [f.result() for f in as_completed(futures)] # nmb of workers (each worker has states, actions, true_values, ...)
+            
+            
+            # iterate over each workers batch and push to memory (batches = (#-workers, states, actions, ...))
+            for j, (states, actions, true_values) in enumerate(batches):
+                for i, _ in enumerate(states):
+                    self.memory.push(
+                        states[i],
+                        actions[i],
+                        true_values[i]
+                    )
+                    
+            self.steps_idx += self.batch_size * len(self.workers)
+            value, critic_loss, actor_loss, entropy = self.progress() # train active column
+            updates += 1
+            
+            # log the incoming data
+            value_log.append(value)
+            critic_loss_log.append(critic_loss)
+            actor_loss_log.append(actor_loss)
+            entropy_log.append(entropy)
+            
+            # save active model weights and optimizer status every 100_000 steps
+            if (self.steps_idx - last_saved_steps_idx) >= 500_000:
+                print(f"Save Active in step-# with updates = {updates}: {self.steps_idx}\n")
+                self.save_active(self.steps_idx)
+                last_saved_steps_idx = self.steps_idx
+            
+            if self.steps_idx % 10000 == 0: # log every 10000 steps
+                print(f"Progress timesteps in the environment: {self.steps_idx}")
+                value_mean = np.mean(value_log)
+                critic_loss_mean = np.mean(critic_loss_log)
+                actor_loss_mean = np.mean(actor_loss_log)
+                entropy_mean = np.mean(entropy_log)
+                
+                wandb.log({
+                    "Value": value_mean, 
+                    "Critic Loss": critic_loss_mean, 
+                    "Actor Loss": actor_loss_mean,
+                    "Entropy": entropy_mean,
+                    "Steps Progress": self.steps_idx
+                })
+
     def compress_training(self, max_steps, ewc):
         # init values for run
         self.steps_idx = 0
@@ -251,19 +315,14 @@ class Agent:
         self.kb_model.unfreeze_parameters()
         
         while self.steps_idx < max_steps:
-            # collect training data
-            with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
-                # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
-                batches = [f.result() for f in as_completed(futures)]
-                
-                for j, (states, actions, true_values) in enumerate(batches):
-                    for i, _ in enumerate(states):
-                        self.memory.push(
-                            states[i],
-                            actions[i],
-                            true_values[i]
-                        )
+            for worker in self.workers:
+                states, actions, true_values = self.collect_batch(worker, "Progress", None)
+                for i, _ in enumerate(states):
+                    self.memory.push(
+                        states[i],
+                        actions[i],
+                        true_values[i]
+                    )
             
             self.steps_idx += self.batch_size * len(self.workers)
             total_loss, kl_loss, ewc_loss = self.compress(ewc) # train

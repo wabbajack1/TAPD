@@ -1,24 +1,18 @@
 #!/Users/kerekmen/miniconda3/envs/agnostic_rl/bin/python
 import wandb
-import argparse
 import torch
 import numpy as np
 from agent import Agent
-import common.wrappers
 import datetime
 from pathlib import Path
 import torch.multiprocessing as mp
-from commons.model import Active_Module
 import random
-from gym.wrappers.monitoring.video_recorder import VideoRecorder
 from commons.EWC import EWC
-import copy 
 import os
-from commons.model import weight_reset, init_weights
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
-from typing import Optional
-import time
+from concurrent.futures import ThreadPoolExecutor, ThreadPoolExecutor, as_completed
+import arguments
 from utils import evaluate, test_disitillation
+
 
 print(f"Torch version: {torch.__version__}")
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
@@ -95,8 +89,8 @@ def main(args):
         agent.load_active(load_path, load_step_active, mode)
         agent.load_kb(load_path, load_step_kb, mode)
    
-    #progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, seed=seed)
-    test_disitillation(agent=agent, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, ewc_start=ewc_start, seed=seed, eval_after_compress=True)
+    progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, ewc_start=ewc_start, seed=seed)
+    # test_disitillation(agent=agent, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, ewc_start=ewc_start, seed=seed, eval_after_compress=True)
 
 def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, ewc_start, seed):
     visits = visits # visit each task x times
@@ -133,12 +127,11 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
             # collect training data from current kb knowledge policy
             print("---- Collect rollout for EWC ----")
             for k in range(batch_number_fisher):
-                with ThreadPoolExecutor(max_workers=len(agent.workers)) as executor:
-                    # Submit tasks to the executor and collect results based on the current policy of kb knowledge
-                    futures = [executor.submit(agent.collect_batch, worker, "Compress", batch_size_fisher) for worker in agent.workers]
-                    batches = [f.result() for f in as_completed(futures)]
-                    
-                    
+                # with ThreadPoolExecutor(max_workers=len(agent.workers)) as executor:
+                # Submit tasks to the executor and collect results based on the current policy of kb knowledge
+                # futures = [executor.submit(agent.collect_batch, worker, "Compress", batch_size_fisher) for worker in agent.workers]
+                # batches = [f.result() for f in as_completed(futures)]
+
                 for j, (states, actions, true_values) in enumerate(batches):
                     for i, _ in enumerate(states):
                         agent.memory.push(
@@ -173,167 +166,6 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
     print("Training completed.\n")        
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    
-    parser.add_argument(
-        "-b",
-        "--batch_size",
-        type=int,
-        default=5,
-        help="Batch size"
-    )
-    
-    parser.add_argument(
-        "-mfp",
-        "--max_steps_progress",
-        type=int,
-        default=1000_000,
-        help="Number of frames for progress phase")
-    
-    parser.add_argument(
-        "-mfc",
-        "--max_steps_compress",
-        type=int,
-        default=1000_000,
-        help="Number of frames for compress phase (expected to be smaller number than mfp)")
-
-    parser.add_argument(
-        "-lr",
-        "--learning_rate",
-        type=float,
-        default=0.0007,
-        help="Learning rate")
-
-    parser.add_argument(
-        "-g",
-        "--gamma",
-        type=float,
-        default=0.99,
-        help="gamma discount value")
-    
-    parser.add_argument(
-        "-eps",
-        "--epsilon",
-        type=float,
-        default=0.00001,
-        help="epsilin decay for rms optimizer")
-
-    parser.add_argument(
-        "-ent",
-        "--entropy_coef",
-        type=float,
-        default=0.01,
-        help="entropy coef value for exploartion")
-
-    parser.add_argument(
-        "-cri",
-        "--critic_coef",
-        type=float,
-        default=0.5,
-        help="critic coef value")
-
-    parser.add_argument(
-        "-w",
-        "--workers",
-        type=int,
-        default=4,
-        help="number of workers for running env")
-
-    parser.add_argument(
-        "-s",
-        "--seed",
-        type=int,
-        default=44,
-        help="seed number")
-    
-    parser.add_argument(
-        "-eval",
-        "--evaluate",
-        type=int,
-        default=10,
-        help="Run test with #-of episodes; The episodes get avg over the # of episodes provided")
-    
-    parser.add_argument(
-        "-bF",
-        "--batch_size_fisher",
-        type=int,
-        default=32,
-        help="Batch size for calculating the estimate of the fisher")
-    
-    parser.add_argument(
-        "-bFnumber",
-        "--batch_number_fisher",
-        type=int,
-        default=100,
-        help="Numbers of batches for calculating the estimate of the fisher")
-    
-    parser.add_argument(
-        "-ewcgamma",
-        "--ewcgamma",
-        type=float,
-        default=0.99,
-        help="This is the decaying factor of the online-ewc algorithm, where ewcgamma = 1 indicates older tasks are more important than newer one")
-    
-    parser.add_argument(
-        "-ewclambda",
-        "--ewclambda",
-        type=float,
-        default=175,
-        help="The scale at which the regularizer is used (here 175 based on P&C Paper)")
-    
-    parser.add_argument(
-        "-load_step_active",
-        "--load_step_active",
-        type=int,
-        default=0,
-        help="From which timestep do you want to load your agent?")
-    
-    parser.add_argument(
-        "-load_step_kb",
-        "--load_step_kb",
-        type=int,
-        default=0,
-        help="From which timestep do you want to load your agent?")
-    
-    parser.add_argument(
-        "-load_path",
-        "--load_path",
-        type=str,
-        default=None,
-        help="Where is the path of your agent?")
-    
-    parser.add_argument(
-        "-mode",
-        "--mode",
-        type=str,
-        default="cpu",
-        help="When loading the agent, on which device should it run the evaluation (cpu/gpu)?")
-    
-    
-    parser.add_argument(
-        "-visits",
-        "--visits",
-        type=int,
-        default=1,
-        help="How many times should the tasks visited?")
-    
-    parser.add_argument(
-        "-ewc_start_timestep_after",
-        "--ewc_start_timestep_after",
-        type=int,
-        default=1000,
-        help="Which timestep should the ewc loss be applied to the total loss as a regularizer?")
-    
-    parser.add_argument(
-        "-n",
-        "--notes",
-        type=str,
-        default="",
-        help="Specify the information for this run.")
-    
-    
-    
-    args = parser.parse_args()
-    #mp.set_start_method('forkserver')
+    args = arguments.get_args()
     main(args)
 

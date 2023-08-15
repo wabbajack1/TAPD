@@ -49,7 +49,7 @@ class EWC(object):
     
     def calculate_fisher(self):
         print(f"Calculation of the task for the importance of each parameter: {self.env_name}")
-        self.model.eval()
+        self.model.train()
         
         fisher = {}
         for n, p in deepcopy(self.params).items():
@@ -78,11 +78,11 @@ class EWC(object):
             true_values = torch.squeeze(true_values)
             
             advantages = true_values - values
-            critic_loss = advantages.pow(2).mean()
+            # critic_loss = advantages.pow(2).mean()
             
             actor_loss = -(log_probs * advantages.detach()).mean()
-            total_loss = ((0.5 * critic_loss) + actor_loss - (0.01 * entropy)).backward()
-            # actor_loss.backward() # calc the gradients and store it in grad
+            # total_loss = ((0.5 * critic_loss) + actor_loss - (0.01 * entropy)).backward()
+            actor_loss.backward() # calc the gradients and store it in grad
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1)
             
             # Update Fisher information matrix
@@ -90,14 +90,14 @@ class EWC(object):
             for name, param in self.model.named_parameters():
                 if param.grad is not None and "critic" not in name:
                     if self.old_fisher is not None and name in self.old_fisher:
-                        fisher[name] += self.ewc_gamma * self.old_fisher[name] + param.grad.data.clone().pow(2)
+                        fisher[name] += self.ewc_gamma * self.old_fisher[name] + param.grad.detach().clone().pow(2)
                     else:
-                        fisher[name] += param.grad.data.clone().pow(2)
+                        fisher[name] += param.grad.detach().clone().pow(2)
 
         print(f"len of dataloader {len(dataloader)}, no of workers {self.agent.no_of_workers}")
         for name in fisher:
-            # fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data)) / (torch.std(fisher[name].data) + 1e-16)
-            fisher[name].data /= float(len(dataloader))
+            fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data)) / (torch.std(fisher[name].data) + 1e-08)
+            fisher[name].data /= (len(dataloader)/self.agent.no_of_workers)
         
         self.old_fisher = fisher.copy()
         self.model.train()

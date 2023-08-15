@@ -1,4 +1,4 @@
-import common.wrappers
+import envs.wrappers
 import numpy as np
 import wandb
 import torch
@@ -21,11 +21,11 @@ class Worker(object):
         self.rank = rank
 
         self.FloatTensor = torch.FloatTensor
-        env = common.wrappers.make_atari(env_name, full_action_space=True)
-        env = common.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True)
-        env = common.wrappers.wrap_pytorch(env)
-        print(f"Rank: {self.rank} - env: {id(env)}\n")
-        env.seed(rank+seed-1)
+        env = envs.wrappers.make_atari(env_name, full_action_space=True)
+        env = envs.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True, seed=seed)
+        env = envs.wrappers.wrap_pytorch(env, seed=seed)
+        seed_list = env.seed(rank+seed-1)
+        print(f"Rank: {self.rank} - env: {id(env)} - seed {seed_list}\n")
         
         self.env_dict = {}
         self.env_dict["Progress"] = env

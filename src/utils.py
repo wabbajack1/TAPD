@@ -3,14 +3,15 @@ This module should help for debugging and other purposes of a ANN.
 """
 from torch import nn
 from commons.EWC import EWC
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ThreadPoolExecutor, as_completed
 import os
-import common.wrappers as wrappers
+import envs.wrappers as wrappers
 import time
 import torch
 import gym
 import wandb
 import numpy as np
+from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 ################################
 ## global counters            ##
@@ -22,14 +23,15 @@ steps = {}
 ################################
 ## Model-inspection functions ##
 ################################
-def evaluate(model, env_name, save_dir, num_episodes):
+def evaluate(model, env_name, save_dir, num_episodes, seed):
     
     # collect frame and steps across all visits
     global frame_number_eval
     global steps
     
     # init env but do not clip the rewards in eval phase                    
-    env = environment_wrapper(save_dir, env_name=env_name, video_record=True, clip_rewards=False)
+    env = environment_wrapper(save_dir, env_name=env_name, video_record=True, clip_rewards=False, seed=seed)
+    env.seed(seed=seed)
     
     evaluation_scores = []
     for _ in range(num_episodes):
@@ -58,11 +60,10 @@ def evaluate(model, env_name, save_dir, num_episodes):
                     frame_number_eval[env_name] += info["episode_frame_number"]
                     
                 wandb.log({f"Evaluation_score_{env_name}-{model.__class__.__name__}": episode_reward, f"Frame-# Evaluation-{env_name}": frame_number_eval[env_name], f"Steps-# Evaluation-{env_name}":steps[env_name]})
-                
+        
         evaluation_scores.append(episode_reward)
 
     wandb.log({f"Avg_evaluation_score_{env_name}-{model.__class__.__name__}": np.mean(evaluation_scores)})
-
     return np.mean(evaluation_scores) #, np.mean(evaluation_scores_original)
 
 def count_parameters(model, verbose=True):
@@ -98,21 +99,20 @@ def print_model_info(model, title="MODEL"):
 def test_disitillation(agent, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, ewc_start, seed, eval_after_compress=True):
     
     # see eval before distillation
-    _evaluate(agent, save_dir, evaluation_epsiode)
+    _evaluate(agent, save_dir, evaluation_epsiode, seed=seed)
     
     # compute fisher for pong
     print(10*"#", " Collect rollout for EWC ", 10*"#")
     print("############## Creating workers ##############")
     agent.reinitialize_workers("PongNoFrameskip-v4")
     for k in range(batch_number_fisher):
-        with ThreadPoolExecutor(max_workers=len(agent.workers)) as executor:
-            # Submit tasks to the executor and collect results based on the current policy of kb knowledge
-            futures = [executor.submit(agent.collect_batch, worker, "Compress", batch_size_fisher) for worker in agent.workers]
-            batches = [f.result() for f in as_completed(futures)]
-        
-        # print(len(batches))
-        for j, (states, actions, true_values) in enumerate(batches):
-            # print(len(states), states[0].shape)
+        # with ThreadPoolExecutor(max_workers=len(agent.workers)) as executor:
+        # Submit tasks to the executor and collect results based on the current policy of kb knowledge
+        # futures = [executor.submit(agent.collect_batch, worker, "Compress", batch_size_fisher) for worker in agent.workers]
+        # batches = [f.result() for f in as_completed(futures)]
+
+        for worker in agent.workers:
+            states, actions, true_values = agent.collect_batch(worker, "Compress", batch_size_fisher)
             for i, _ in enumerate(states):
                 agent.memory.push(
                     states[i],
@@ -136,24 +136,24 @@ def test_disitillation(agent, max_steps_compress, save_dir, evaluation_epsiode, 
         until_steps = 100000
         for _ in range(0, max_steps_compress, until_steps):
             agent.compress_training(until_steps, ewc)
-            _evaluate(agent, save_dir, evaluation_epsiode)
+            _evaluate(agent, save_dir, evaluation_epsiode, seed=seed)
     else:
         agent.compress_training(max_steps_compress, ewc)
-        _evaluate(agent, save_dir, evaluation_epsiode)
+        _evaluate(agent, save_dir, evaluation_epsiode, seed=seed)
     pass
 
-def _evaluate(agent, save_dir, evaluation_epsiode, task_1="PongNoFrameskip-v4", task_2="BeamRiderNoFrameskip-v4"):
+def _evaluate(agent, save_dir, evaluation_epsiode, seed=None, task_1="PongNoFrameskip-v4", task_2="BeamRiderNoFrameskip-v4"):
     assert "NoFrameskip" in task_1 or "NoFrameskip" in task_2, "The string does not contain 'NoFrameskip'"
 
     print(20*"=", "Evaluation started", 20*"=")
     for env_name_eval in [task_1, task_2]:
-        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode)
+        evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
         print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Evaluation_score: {evaluation_data}")
         wandb.log({f"Evaluation_score_{env_name_eval}":evaluation_data})
     print(20*"=","Evaluation completed", 20*"=")
     pass
 
-def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True):
+def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True, seed=None):
     """Preprocesses the environment based on the wrappers
 
     Args:
@@ -162,14 +162,13 @@ def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=Tru
     Returns:
         env object: return the preprocessed env (MDP problem)
     """
-
     
     env = wrappers.make_atari(env_name, full_action_space=True)
     if video_record:
         path = (save_dir / "video" / f"{env.spec.id}_{time.time()}")
         env = gym.wrappers.Monitor(env, path, mode="evaluation")
-    env = wrappers.wrap_deepmind(env, scale=True, clip_rewards=clip_rewards) 
-    env = wrappers.wrap_pytorch(env)
+    env = wrappers.wrap_deepmind(env, scale=True, clip_rewards=clip_rewards, seed=seed) 
+    env = wrappers.wrap_pytorch(env, seed=seed)
     return env
 
 class Flatten(nn.Module):
