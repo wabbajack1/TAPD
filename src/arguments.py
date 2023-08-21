@@ -152,7 +152,7 @@ def get_args():
         help="Specify the information for this run.")
     
     parser.add_argument(
-        "-c",
+        "-gpu",
         "--gpu",
         type=bool,
         default=False,

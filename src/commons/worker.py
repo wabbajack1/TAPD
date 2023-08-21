@@ -4,6 +4,8 @@ import wandb
 import torch
 from typing import Optional
 from copy import deepcopy
+from gym.wrappers import AtariPreprocessing, FrameStack
+from envs.wrappers import ClipRewardEnv
 
 # keep track of the number of frames
 frame_number = {}
@@ -22,10 +24,10 @@ class Worker(object):
         self.rank = rank
 
         self.FloatTensor = torch.FloatTensor
-        env = envs.wrappers.make_atari(env_name, full_action_space=True)
-        env = envs.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True)
-        env = envs.wrappers.wrap_pytorch(env)
-        # env.seed(rank+seed-1)
+        env = AtariPreprocessing(env=env, scale_obs=True)
+        env = ClipRewardEnv(env=env)
+        env = FrameStack(env=env, num_stack=4)
+        env.seed(123+rank)
         print(f"Rank: {self.rank} - env: {id(env)}\n")
         
         self.env_dict = {}
