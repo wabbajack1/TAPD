@@ -6,19 +6,19 @@ def get_args():
         "-b",
         "--batch_size",
         type=int,
-        default=5,
+        default=20,
         help="Batch size"
     )
     
     parser.add_argument(
-        "-mfp",
+        "-msp",
         "--max_steps_progress",
         type=int,
-        default=1000_000,
+        default=3_500_000,
         help="Number of frames for progress phase")
     
     parser.add_argument(
-        "-mfc",
+        "-msc",
         "--max_steps_compress",
         type=int,
         default=1000_000,
@@ -63,7 +63,7 @@ def get_args():
         "-w",
         "--workers",
         type=int,
-        default=4,
+        default=8,
         help="number of workers for running env")
 
     parser.add_argument(
@@ -105,7 +105,7 @@ def get_args():
         "-ewclambda",
         "--ewclambda",
         type=float,
-        default=175,
+        default=4000,
         help="The scale at which the regularizer is used (here 175 based on P&C Paper)")
     
     parser.add_argument(
@@ -142,7 +142,7 @@ def get_args():
         "-ewc_start_timestep_after",
         "--ewc_start_timestep_after",
         type=int,
-        default=1000,
+        default=250000,
         help="Which timestep should the ewc loss be applied to the total loss as a regularizer?")
     parser.add_argument(
         "-n",
@@ -150,6 +150,13 @@ def get_args():
         type=str,
         default="",
         help="Specify the information for this run.")
+    
+    parser.add_argument(
+        "-c",
+        "--gpu",
+        type=bool,
+        default=False,
+        help="Mpdels running on GPU.")
     
     args = parser.parse_args()
 

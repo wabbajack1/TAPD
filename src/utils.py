@@ -23,7 +23,7 @@ steps = {}
 ################################
 ## Model-inspection functions ##
 ################################
-def evaluate(model, env_name, save_dir, num_episodes, seed):
+def evaluate(model, env_name, save_dir, num_episodes, seed=None):
     
     # collect frame and steps across all visits
     global frame_number_eval
@@ -166,7 +166,7 @@ def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=Tru
     env = wrappers.make_atari(env_name, full_action_space=True)
     if video_record:
         path = (save_dir / "video" / f"{env.spec.id}_{time.time()}")
-        env = gym.wrappers.Monitor(env, path, mode="evaluation")
+        env = VideoRecorder(env, path)
     env = wrappers.wrap_deepmind(env, scale=True, clip_rewards=clip_rewards, seed=seed) 
     env = wrappers.wrap_pytorch(env, seed=seed)
     return env

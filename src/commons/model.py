@@ -25,33 +25,33 @@ class KB_Module(nn.Module):
     def __init__(self, device):
         super(KB_Module, self).__init__()
         self.device = device
-        feature_size = 64*7*7
+        feature_size = 1568
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=8, stride=4),
             nn.ReLU(),
         )
         self.layer2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.Conv2d(32, 32, kernel_size=4, stride=2),
             nn.ReLU(),
         )
         self.layer3 = nn.Sequential(
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1),
             nn.ReLU()
         )
 
         # feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *(1, 84, 84))))).to(device).view(1, -1).size(1)
 
         self.critic = nn.Sequential(
-            nn.Linear(feature_size, 512),
+            nn.Linear(feature_size, 256),
             nn.ReLU(),
-            nn.Linear(512, 1)
+            nn.Linear(256, 1)
         )
 
         self.actor = nn.Sequential(
-            nn.Linear(feature_size, 512),
+            nn.Linear(feature_size, 256),
             nn.ReLU(),
-            nn.Linear(512, 18),
+            nn.Linear(256, 18),
             nn.Softmax(dim=-1)
         )
 
@@ -149,33 +149,33 @@ class Active_Module(nn.Module):
         # Define feature layers with lateral connections
         self.lateral_connections = lateral_connections
         self.device = device
-        feature_size = 64*7*7
+        feature_size = 1568
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=8, stride=4),
             nn.ReLU(),
         )
         self.layer2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.Conv2d(32, 32, kernel_size=4, stride=2),
             nn.ReLU(),
         )
         self.layer3 = nn.Sequential(
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1),
             nn.ReLU()
         )
 
         # feature_size = self.layer3(self.layer2(self.layer1(torch.zeros(1, *(1, 84, 84))))).to(device).view(1, -1).size(1)
 
         self.critic = nn.Sequential(
-            nn.Linear(feature_size, 512),
+            nn.Linear(feature_size, 256),
             nn.ReLU(),
-            nn.Linear(512, 1)
+            nn.Linear(256, 1)
         )
 
         self.actor = nn.Sequential(
-            nn.Linear(feature_size, 512),
+            nn.Linear(feature_size, 256),
             nn.ReLU(),
-            nn.Linear(512, 18),
+            nn.Linear(256, 18),
             nn.Softmax(dim=-1)
         )
         
@@ -300,15 +300,15 @@ class Adaptor(nn.Module):
     def __init__(self, feature_size):
         super(Adaptor, self).__init__()
         self.conv1_adaptor = nn.Conv2d(32, 32, kernel_size=1)
-        self.conv2_adaptor = nn.Conv2d(64, 64, kernel_size=1)
-        self.conv3_adaptor = nn.Conv2d(64, 64, kernel_size=1)
+        self.conv2_adaptor = nn.Conv2d(32, 32, kernel_size=1)
+        self.conv3_adaptor = nn.Conv2d(32, 32, kernel_size=1)
         
         self.critic_adaptor = nn.Sequential(
-            nn.Linear(feature_size, 512),
+            nn.Linear(feature_size, 256),
             nn.ReLU())
         
         self.actor_adaptor = nn.Sequential(
-            nn.Linear(feature_size, 512),
+            nn.Linear(feature_size, 256),
             nn.ReLU())
         
         self._initialize_weights()
@@ -373,7 +373,7 @@ class ProgressiveNet(nn.Module):
         self.icm = None
         
         try:
-            wandb.watch(self, log_freq=1000, log="all", log_graph=True)
+            wandb.watch(self, log_freq=1, log="all", log_graph=True)
         except:
             pass
 

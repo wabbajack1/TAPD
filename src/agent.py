@@ -46,8 +46,7 @@ class Agent:
         self.wandb = wandb
         self.ewc_loss = 0
         self.resume = resume # continue with training state before crash
-
-        self.steps_idx_overall = 0 # for evaluation
+        # self.steps_idx_overall = 0 # ONLY for evalution, other comment it out
 
         self.device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
         print(f"Cuda available: {torch.cuda.is_available()}, Set to: {use_cuda}")
@@ -65,12 +64,14 @@ class Agent:
         self.active_optimizer = torch.optim.RMSprop(self.active_model.parameters(), lr=self.lr, eps=eps)
         self.progNet_optimizer = torch.optim.RMSprop(self.progNet.parameters(), lr=self.lr, eps=eps)
 
-    @staticmethod
-    def collect_batch(worker, mode, batch_size):
-        return worker.get_batch(mode, batch_size)
+    def collect_batch(self, worker, mode, batch_size):
+        return worker.get_batch(mode, batch_size, {"Progress": self.progNet, "Compress": self.kb_model})
     
     def create_worker(self, i, env_name):
-        worker = Worker(env_name, {"Progress": self.progNet, "Compress": self.kb_model}, self.batch_size, self.gamma, self.device, self.seed, i)
+        """
+        Create workers, every object is different.
+        """
+        worker = Worker(env_name, self.batch_size, self.gamma, self.device, self.seed, i)
         print(f"Worker {i} created\n")
         return worker
 
@@ -136,7 +137,7 @@ class Agent:
         criterion = torch.nn.KLDivLoss(reduction="batchmean", log_target=True)
         
         # fetch experience
-        states, actions, true_values = self.memory.pop_all() # take the same data again
+        states, actions, _ = self.memory.pop_all() # take the same data again
         self.memory.delete_memory()
         
         #### begin of calculation ####
@@ -151,8 +152,8 @@ class Agent:
         kl_loss = criterion(log_probs_kb.unsqueeze(0), log_probs_active.unsqueeze(0).detach())
         
         # calc ewc loss after every update and protected the weights w.r.t. the previous task
-        self.steps_idx_overall += self.batch_size * len(self.workers)
-        if ewc is not None and self.steps_idx_overall >= ewc.ewc_start_timestep:
+        self.steps_idx += self.batch_size * len(self.workers)
+        if ewc is not None and self.steps_idx >= ewc.ewc_start_timestep:
             # The second argument, crucial for EWC, guides parameter space during training using old parameters as reference to prevent excessive divergence
             self.ewc_loss = ewc.penalty(self.kb_model)
             total_loss = kl_loss + self.ewc_loss
@@ -170,7 +171,7 @@ class Agent:
 
     def progress_training(self, max_steps):
         # watch variables
-        self.steps_idx = 0
+        self.steps_idx = 0  # on each new phase set this to zero
         updates = 0
         last_saved_steps_idx = 0
         
@@ -187,14 +188,23 @@ class Agent:
         
         # iterate over the specifiec steps in the environment
         while self.steps_idx < max_steps:
-            with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
-                # Submit tasks to the executor and collect results
-                futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
-                batches = [f.result() for f in as_completed(futures)] # nmb of workers (each worker has states, actions, true_values, ...)
+            # with ThreadPoolExecutor(max_workers=len(self.workers)) as executor:
+            #     # Submit tasks to the executor and collect results
+            #     futures = [executor.submit(self.collect_batch, worker, "Progress", None) for worker in self.workers]
+            #     batches = [f.result() for f in as_completed(futures)] # nmb of workers (each worker has states, actions, true_values, ...)
             
             
-            # iterate over each workers batch and push to memory (batches = (#-workers, states, actions, ...))
-            for j, (states, actions, true_values) in enumerate(batches):
+            # # iterate over each workers batch and push to memory (batches = (#-workers, states, actions, ...))
+            # for j, (states, actions, true_values) in enumerate(batches):
+            #     for i, _ in enumerate(states):
+            #         self.memory.push(
+            #             states[i],
+            #             actions[i],
+            #             true_values[i]
+            #         )
+
+            for worker in self.workers:
+                states, actions, true_values = self.collect_batch(worker, "Progress", None)
                 for i, _ in enumerate(states):
                     self.memory.push(
                         states[i],
@@ -202,7 +212,7 @@ class Agent:
                         true_values[i]
                     )
                     
-            self.steps_idx += self.batch_size * len(self.workers)
+            self.steps_idx += self.batch_size
             value, critic_loss, actor_loss, entropy = self.progress() # train active column
             updates += 1
             
@@ -233,7 +243,10 @@ class Agent:
                     "Steps Progress": self.steps_idx
                 })
 
-    def progress_training(self, max_steps):
+    # TODO -> make this paralllel (distribute this function across different cpus)
+    def _progress_training(self, max_steps=None, index=None, args=None, global_model=None, global_icm=None, optimizer=None, save=False, log=None):
+        torch.manual_seed(123 + index) # set seed
+
         # watch variables
         self.steps_idx = 0
         updates = 0
@@ -300,7 +313,7 @@ class Agent:
 
     def compress_training(self, max_steps, ewc):
         # init values for run
-        self.steps_idx = 0
+        self.steps_idx = 0 # on each new phase set this to zero
         last_saved_steps_idx = 0
         updates = 0
         
@@ -324,7 +337,7 @@ class Agent:
                         true_values[i]
                     )
             
-            self.steps_idx += self.batch_size * len(self.workers)
+            self.steps_idx += self.batch_size
             total_loss, kl_loss, ewc_loss = self.compress(ewc) # train
             updates += 1
             

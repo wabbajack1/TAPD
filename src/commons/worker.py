@@ -8,6 +8,7 @@ from copy import deepcopy
 # keep track of the number of frames
 frame_number = {}
 episode_number = {}
+global_steps = {}
 
 class Worker(object):
     """The worker is the one which interacts with the env and collects
@@ -15,17 +16,17 @@ class Worker(object):
     Here self.env instanace gets created in each thread, which means same envrinment as a copy in different threads.
     """
 
-    def __init__(self, env_name, model_dict, batch_size, gamma, device, seed, rank):        
+    def __init__(self, env_name, batch_size, gamma, device, seed, rank):        
         self.device = device
         self.env_name = env_name
         self.rank = rank
 
         self.FloatTensor = torch.FloatTensor
         env = envs.wrappers.make_atari(env_name, full_action_space=True)
-        env = envs.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True, seed=seed)
-        env = envs.wrappers.wrap_pytorch(env, seed=seed)
-        seed_list = env.seed(rank+seed-1)
-        print(f"Rank: {self.rank} - env: {id(env)} - seed {seed_list}\n")
+        env = envs.wrappers.wrap_deepmind(env, scale=True, clip_rewards=True)
+        env = envs.wrappers.wrap_pytorch(env)
+        # env.seed(rank+seed-1)
+        print(f"Rank: {self.rank} - env: {id(env)}\n")
         
         self.env_dict = {}
         self.env_dict["Progress"] = env
@@ -35,7 +36,6 @@ class Worker(object):
         self.state["Progress"] = self.FloatTensor(self.env_dict["Progress"].reset())
         self.state["Compress"] = self.FloatTensor(self.env_dict["Compress"].reset())
         
-        self.model_dict = model_dict
         self.batch_size = batch_size
         self.gamma = gamma
 
@@ -50,7 +50,7 @@ class Worker(object):
         self.episode_reward["Compress"] = 0
         self.episode_reward_orginal = 0
         
-    def get_batch(self, mode:Optional[str]="Progress", batch_size:Optional[int]=None):
+    def get_batch(self, mode:Optional[str]="Progress", batch_size:Optional[int]=None, model_dict=None):
         """Create rollout for update of parameters. This method is called after each training step. Its is strongly
         dependent on the memory/memory.py module, which stores the experience for further batch creation via dataloader
         during training.
@@ -60,7 +60,9 @@ class Worker(object):
         Returns:
             tuple: (states, actions, values, info["frame_number"]). info["frame_number"] is optional
         """
+        self.model_dict = model_dict
         global frame_number
+        global global_steps
         
         states, actions, rewards, dones = [], [], [], []
         
@@ -75,17 +77,27 @@ class Worker(object):
             actions.append(action)
             rewards.append(reward[0])
             dones.append(done)
+            # print(self.state[mode].unsqueeze(0).sum(), self.rank, action, info)
+
+            if self.rank == 0:
+                global_steps.setdefault(self.env_name, 0)
+                global_steps[self.env_name] += 1
                     
             if done:
                 frame_number.setdefault(mode, {}).setdefault(self.env_name, 0)
                 episode_number.setdefault(mode, {}).setdefault(self.env_name, 0)
                 
                 if self.env_dict[mode].was_real_done:
-                    frame_number[mode][self.env_name] += info['episode_frame_number'] # each info is accociated with one thread
-                    episode_number[mode][self.env_name] += 1
                     self.data[mode].append(self.episode_reward[mode])
                     print(f"Mode {mode} -- Worker {self.rank} in episode {episode_number[mode][self.env_name]} -- Average Score: {np.mean(self.data[mode][-100:])} -- Total frames across threads: {frame_number[mode][self.env_name]}")
-                    wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), f"Frame-# Training {self.env_dict[mode].spec.id}":frame_number[mode][self.env_name]}, commit=False)
+                    
+                    if self.rank == 0:
+                        frame_number[mode][self.env_name] += info['episode_frame_number'] # each info is accociated with one thread
+                        episode_number[mode][self.env_name] += 1
+                        wandb.log({f"Training Score {mode}-{self.env_dict[mode].spec.id}": np.mean(self.data[mode][-100:]), 
+                                   f"Frame-# Training {self.env_dict[mode].spec.id}": frame_number[mode][self.env_name],
+                                   f"Steps-# Training {self.env_dict[mode].spec.id}": global_steps[self.env_name]})
+                        
                     self.episode_reward[mode] = 0
                   
                 self.state[mode] = self.FloatTensor(self.env_dict[mode].reset()) # no-op step to advance from terminal/lost life state, when lives > 0

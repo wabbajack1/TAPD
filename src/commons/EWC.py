@@ -58,7 +58,7 @@ class EWC(object):
         states, actions, true_values = self.agent.memory.pop_all()
         self.agent.memory.delete_memory()
         dataset = CustomDataset(states, actions, true_values)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size_fisher, shuffle=False)
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
         for states, actions, true_values in dataloader:
             #print("Parameters:", len(dataset), len(dataloader), states.shape, len(dataloader)/self.agent.no_of_workers, self.batch_size_fisher)
@@ -96,8 +96,8 @@ class EWC(object):
 
         print(f"len of dataloader {len(dataloader)}, no of workers {self.agent.no_of_workers}")
         for name in fisher:
-            fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data)) / (torch.std(fisher[name].data) + 1e-08)
-            fisher[name].data /= (len(dataloader)/self.agent.no_of_workers)
+            # fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data).detach()) / (torch.std(fisher[name].data).detach() + 1e-08)
+            fisher[name].data /= len(dataloader)/self.agent.no_of_workers
         
         self.old_fisher = fisher.copy()
         self.model.train()
@@ -126,7 +126,7 @@ class EWC(object):
                 mean_params_sum += self.mean_params[n].sum()
                 # print(n, torch.sqrt(self.fisher[n] + 1e-05))
         
-        print("EWC Loss", (self.ewc_lambda * loss).item(), "loss", loss.item(), f"EWC lambda {self.ewc_lambda}", f"Fisher: {fisher_sum.sum()}", f"mean params: {mean_params_sum.sum()}")
+        print("EWC Loss", (self.ewc_lambda * loss).item(), "loss fisher", loss.item(), f"EWC lambda {self.ewc_lambda}", f"Fisher: {fisher_sum.sum()}", f"mean params: {mean_params_sum.sum()}")
         return self.ewc_lambda * loss
     
     def update(self, agent, model, env_name):
@@ -140,7 +140,7 @@ class EWC(object):
         """
         self.agent = agent
         self.env_name = env_name
-        self.params = {n: p for n, p in model.named_parameters() if p.requires_grad}
+        self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad and "critic" not in n}
         self.fisher = self.calculate_fisher()
         for n, p in deepcopy(self.params).items():
             self.mean_params[n] = variable(p.data)
