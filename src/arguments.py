@@ -14,14 +14,14 @@ def get_args():
         "-msp",
         "--max_steps_progress",
         type=int,
-        default=3_500_000,
+        default=3_400_000,
         help="Number of frames for progress phase")
     
     parser.add_argument(
         "-msc",
         "--max_steps_compress",
         type=int,
-        default=1000_000,
+        default=500_000,
         help="Number of frames for compress phase (expected to be smaller number than mfp)")
 
     parser.add_argument(
@@ -42,7 +42,7 @@ def get_args():
         "-eps",
         "--epsilon",
         type=float,
-        default=0.00001,
+        default=1e-5,
         help="epsilin decay for rms optimizer")
 
     parser.add_argument(
@@ -78,7 +78,7 @@ def get_args():
         "--evaluate",
         type=int,
         default=10,
-        help="Run test with #-of episodes; The episodes get avg over the # of episodes provided")
+        help="Run test with #-of steps; The episodes get avg over the # of steps provided")
     
     parser.add_argument(
         "-bF",
@@ -142,7 +142,7 @@ def get_args():
         "-ewc_start_timestep_after",
         "--ewc_start_timestep_after",
         type=int,
-        default=250000,
+        default=250_000,
         help="Which timestep should the ewc loss be applied to the total loss as a regularizer?")
     parser.add_argument(
         "-n",

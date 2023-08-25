@@ -12,6 +12,9 @@ import gym
 import wandb
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
+from gym.wrappers import AtariPreprocessing, FrameStack
+from envs.wrappers import ClipRewardEnv, EpisodicLifeEnv
+from unified_action_space import UnifiedActionWrapper
 
 ################################
 ## global counters            ##
@@ -23,47 +26,49 @@ steps = {}
 ################################
 ## Model-inspection functions ##
 ################################
-def evaluate(model, env_name, save_dir, num_episodes, seed=None):
+def evaluate(model, env_name, num_steps, seed=None):
     
     # collect frame and steps across all visits
     global frame_number_eval
     global steps
     
     # init env but do not clip the rewards in eval phase                    
-    env = environment_wrapper(save_dir, env_name=env_name, video_record=True, clip_rewards=False, seed=seed)
+    env = environment_wrapper(env_name=env_name, mode="rgb_array",clip_rewards=False)
     env.seed(seed=seed)
     
     evaluation_scores = []
-    for _ in range(num_episodes):
-        state = env.reset()
-        done = False
-        episode_reward = 0
-        episode_reward_orignal = 0
-
-        while not env.was_real_done:
-            state_tensor = torch.FloatTensor(state).unsqueeze(0)
-            action = model.act(state_tensor.to(model.device))
-            next_state, reward, done, info = env.step(action)
-            episode_reward += reward
-            state = next_state
-            
-            if env_name not in steps:
-                steps[env_name] = 0
-            else:
-                steps[env_name] += 1
-                
-            if env.was_real_done:
-                if env_name not in frame_number_eval:
-                    frame_number_eval[env_name] = 0
-                    frame_number_eval[env_name] += info["episode_frame_number"]
-                else:
-                    frame_number_eval[env_name] += info["episode_frame_number"]
-                    
-                wandb.log({f"Evaluation_score_{env_name}-{model.__class__.__name__}": episode_reward, f"Frame-# Evaluation-{env_name}": frame_number_eval[env_name], f"Steps-# Evaluation-{env_name}":steps[env_name]})
+    episode_reward = 0
+    state = env.reset()
+    for k in range(num_steps):
+        state_tensor = torch.FloatTensor(np.array(state)).unsqueeze(0)
+        action = model.act(state_tensor.to(model.device))
+        next_state, reward, done, _, info = env.step(action)
+        episode_reward += reward
+        state = next_state
         
-        evaluation_scores.append(episode_reward)
+        if env_name not in steps:
+            steps[env_name] = 0
+        else:
+            steps[env_name] += 1
+            
+        if env.was_real_done:
+            if env_name not in frame_number_eval:
+                frame_number_eval[env_name] = 0
+                frame_number_eval[env_name] += info["episode_frame_number"]
+            else:
+                frame_number_eval[env_name] += info["episode_frame_number"]
+                
+            wandb.log({f"Evaluation/Score_{env_name}-{model.__class__.__name__}": episode_reward, 
+                        f"Evaluation/Frame-#-{env_name}": frame_number_eval[env_name], 
+                        f"Evaluation/Steps-#-{env_name}":steps[env_name]})
 
-    wandb.log({f"Avg_evaluation_score_{env_name}-{model.__class__.__name__}": np.mean(evaluation_scores)})
+            print(k, episode_reward, env.was_real_done, steps[env_name])
+            evaluation_scores.append(episode_reward)
+            episode_reward = 0 
+            state = env.reset()
+
+    wandb.log({f"Mean over {num_steps} evaluation steps for {env_name}-{model.__class__.__name__}": np.mean(evaluation_scores[-100:])})
+    print(f"Mean over {num_steps} evaluation steps for {env_name}-{model.__class__.__name__}", np.mean(evaluation_scores[-100:]))
     return np.mean(evaluation_scores) #, np.mean(evaluation_scores_original)
 
 def count_parameters(model, verbose=True):
@@ -153,22 +158,40 @@ def _evaluate(agent, save_dir, evaluation_epsiode, seed=None, task_1="PongNoFram
     print(20*"=","Evaluation completed", 20*"=")
     pass
 
-def environment_wrapper(save_dir, env_name, video_record=False, clip_rewards=True, seed=None):
-    """Preprocesses the environment based on the wrappers
-
-    Args:
-        env_name (string): env name
-
-    Returns:
-        env object: return the preprocessed env (MDP problem)
-    """
+def environment_wrapper(env_name, mode="rgb_array", clip_rewards=True):
     
-    env = wrappers.make_atari(env_name, full_action_space=True)
-    if video_record:
-        path = (save_dir / "video" / f"{env.spec.id}_{time.time()}")
-        env = VideoRecorder(env, path)
-    env = wrappers.wrap_deepmind(env, scale=True, clip_rewards=clip_rewards, seed=seed) 
-    env = wrappers.wrap_pytorch(env, seed=seed)
+    if "StarGunner" in env_name:
+        # "Pong" already has the desired action space
+        action_map = {
+            0: 0,  # NOOP
+            1: 1,  # FIRE
+            2: 2,  # RIGHT
+            3: 3,  # LEFT
+        }
+    if "BeamRider" in env_name:
+        # Adjusted action maps for "BeamRider" 
+        action_map = {
+            0: 0,  # NOOP
+            1: 1,  # FIRE
+            2: 3,  # RIGHT
+            3: 4,  # LEFT
+        }
+    if "SpaceInvaders" in env_name:
+        # Adjusted action maps for "SpaceInvaders"
+        action_map = {
+            0: 0,  # NOOP
+            1: 1,  # FIRE
+            2: 2,  # RIGHT
+            3: 3   # LEFT
+        }
+
+    env = UnifiedActionWrapper(gym.make(env_name, render_mode=mode), action_map=action_map)
+    # env = gym.make(env_name, render_mode=mode, full_action_space=True)
+    env = AtariPreprocessing(env=env, scale_obs=True)
+    env = FrameStack(env=env, num_stack=4)
+    env = EpisodicLifeEnv(env=env)
+    if clip_rewards:
+        env = ClipRewardEnv(env=env)
     return env
 
 class Flatten(nn.Module):

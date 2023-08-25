@@ -28,7 +28,7 @@ class KB_Module(nn.Module):
         feature_size = 1568
 
         self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=8, stride=4),
+            nn.Conv2d(4, 32, kernel_size=8, stride=4),
             nn.ReLU(),
         )
         self.layer2 = nn.Sequential(
@@ -51,7 +51,7 @@ class KB_Module(nn.Module):
         self.actor = nn.Sequential(
             nn.Linear(feature_size, 256),
             nn.ReLU(),
-            nn.Linear(256, 18),
+            nn.Linear(256, 4),
             nn.Softmax(dim=-1)
         )
 
@@ -152,7 +152,7 @@ class Active_Module(nn.Module):
         feature_size = 1568
 
         self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=8, stride=4),
+            nn.Conv2d(4, 32, kernel_size=8, stride=4),
             nn.ReLU(),
         )
         self.layer2 = nn.Sequential(
@@ -175,7 +175,7 @@ class Active_Module(nn.Module):
         self.actor = nn.Sequential(
             nn.Linear(feature_size, 256),
             nn.ReLU(),
-            nn.Linear(256, 18),
+            nn.Linear(256, 4),
             nn.Softmax(dim=-1)
         )
         
@@ -329,7 +329,7 @@ class Adaptor(nn.Module):
                 nn.init.constant_(module.bias, 0)
 
 class ICM(nn.Module):
-    def __init__(self, num_inputs, num_actions=18):
+    def __init__(self, num_inputs, num_actions=4):
         super(ICM, self).__init__()
         self.conv = BaseConv(num_inputs)
         self.state_dim = 64 * 6 * 6
@@ -373,7 +373,7 @@ class ProgressiveNet(nn.Module):
         self.icm = None
         
         try:
-            wandb.watch(self, log_freq=1, log="all", log_graph=True)
+            wandb.watch(self, log_freq=100, log="all", log_graph=True)
         except:
             pass
 

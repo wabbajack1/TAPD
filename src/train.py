@@ -16,11 +16,9 @@ from utils import evaluate, test_disitillation
 
 print(f"Torch version: {torch.__version__}")
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
-os.environ['CUDA_VISIBLE_DEVICES']='1'
+os.environ['CUDA_VISIBLE_DEVICES']='0'
 os.environ["WANDB_DIR"] = '..' # write path of wandb i.e. from working dir
 os.environ['WANDB_MODE'] = 'online'
-frame_number_eval = {}
-steps = {}
 
 def set_seed(seed: int = 44) -> None:
     np.random.seed(seed)
@@ -38,7 +36,7 @@ def main(args):
 
     wandb.init(
         # set the wandb project where this run will be logged
-        project="atari_single_task",
+        project="Atari",
         entity="agnostic",
         config=args,
         notes=args.notes,
@@ -50,8 +48,8 @@ def main(args):
     # Environments for multitask
     #environments = ["PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4', 'SpaceInvadersNoFrameskip-v4']
     #environments = ['SpaceInvadersNoFrameskip-v4', "PongNoFrameskip-v4", 'StarGunnerNoFrameskip-v4']
-    #environments = ["PongNoFrameskip-v4", "BeamRiderNoFrameskip-v4", 'SpaceInvadersNoFrameskip-v4', 'StarGunnerNoFrameskip-v4']
-    environments = ["PongNoFrameskip-v4"]
+    environments = ["PongNoFrameskip-v4", "SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4"]
+    # environments = ["PongNoFrameskip-v4"]
     
     # args
     seed = wandb.config["seed"]
@@ -86,9 +84,9 @@ def main(args):
     agent = Agent(use_gpu, learning_rate, gamma, entropy_coef, critic_coef, no_of_workers, batch_size, eps, save_dir, seed, resume=False)
     
     ###################### start progress and compress algo #########################
-    progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_epsiode=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, ewc_start=ewc_start, seed=seed)
+    progress_and_compress(visits=visits, agent=agent, environments=environments, max_steps_progress=max_steps_progress, max_steps_compress=max_steps_compress, save_dir=save_dir, evaluation_steps=evaluate_nmb, batch_size_fisher=batch_size_fisher, batch_number_fisher=batch_number_fisher, ewcgamma=ewcgamma, ewclambda=ewclambda, ewc_start=ewc_start, seed=seed)
 
-def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_epsiode, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, ewc_start, seed):
+def progress_and_compress(visits, agent, environments, max_steps_progress, max_steps_compress, save_dir, evaluation_steps, batch_size_fisher, batch_number_fisher, ewcgamma, ewclambda, ewc_start, seed):
     visits = visits # visit each task x times
     for visit in range(visits):
         
@@ -129,7 +127,7 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
                 # batches = [f.result() for f in as_completed(futures)]
 
                 for worker in agent.workers:
-                    states, actions, true_values = agent.collect_batch(worker, "Compress", batch_size_fisher)
+                    states, actions, true_values = agent.collect_batch(worker, "Compress", batch_size_fisher, len(agent.workers))
                     for i, _ in enumerate(states):
                         agent.memory.push(
                             states[i],
@@ -144,8 +142,6 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
             else: # else running calulaction taken the last fisher into consideration
                 ewc.update(agent, agent.kb_model, env_name) # update the fisher after learning the current task. The current task becomes in the next iteration the previous task
                 
-            # reset weights after each task
-            agent.active_model.reset_weights(seed=seed)
             #agent.memory.delete_memory() # delete the data which was created for the current iteration from the workers
             agent.active_model.lateral_connections = True
             agent.resume = False # leaf this line here!
@@ -153,11 +149,11 @@ def progress_and_compress(visits, agent, environments, max_steps_progress, max_s
             # eval kb after learning/training     
             print(20*"=", "Evaluation started", 20*"=")
             for env_name_eval in environments:
-                evaluation_data = evaluate(model=agent.kb_model, env_name=env_name_eval, save_dir=save_dir, num_episodes=evaluation_epsiode, seed=seed)
-                avg_score = evaluation_data
-                print(f"Steps: {steps[env_name_eval]}, Frames in {env_name_eval}: {frame_number_eval[env_name_eval]}, Avg Evaluation score: {avg_score}")
+                evaluate(model=agent.kb_model, env_name=env_name_eval,  num_steps=evaluation_steps, seed=seed)
             print(20*"=","Evaluation completed", 20*"=")
-            
+
+            # reset weights after each task
+            agent.active_model.reset_weights(seed=seed)
             print(f"############## VISIT - {visit} ################ END OF TASK - {env_name}##############################\n")
         
     print("Training completed.\n")        

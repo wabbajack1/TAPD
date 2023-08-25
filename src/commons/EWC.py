@@ -83,7 +83,7 @@ class EWC(object):
             actor_loss = -(log_probs * advantages.detach()).mean()
             # total_loss = ((0.5 * critic_loss) + actor_loss - (0.01 * entropy)).backward()
             actor_loss.backward() # calc the gradients and store it in grad
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
             
             # Update Fisher information matrix
             # y_t = a * y_t + (1-a)*y_{t-1}

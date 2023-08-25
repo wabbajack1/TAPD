@@ -64,8 +64,8 @@ class Agent:
         self.active_optimizer = torch.optim.RMSprop(self.active_model.parameters(), lr=self.lr, eps=eps)
         self.progNet_optimizer = torch.optim.RMSprop(self.progNet.parameters(), lr=self.lr, eps=eps)
 
-    def collect_batch(self, worker, mode, batch_size):
-        return worker.get_batch(mode, batch_size, {"Progress": self.progNet, "Compress": self.kb_model})
+    def collect_batch(self, worker, mode, batch_size, nmb_of_workers):
+        return worker.get_batch(mode, batch_size, {"Progress": self.progNet, "Compress": self.kb_model}, nmb_of_workers)
     
     def create_worker(self, i, env_name):
         """
@@ -204,15 +204,16 @@ class Agent:
             #         )
 
             for worker in self.workers:
-                states, actions, true_values = self.collect_batch(worker, "Progress", None)
+                states, actions, true_values = self.collect_batch(worker, "Progress", None, len(self.workers))
                 for i, _ in enumerate(states):
                     self.memory.push(
                         states[i],
                         actions[i],
                         true_values[i]
                     )
-                    
-            self.steps_idx += self.batch_size
+                self.steps_idx += self.batch_size
+                # print(self.steps_idx)
+            
             value, critic_loss, actor_loss, entropy = self.progress() # train active column
             updates += 1
             
@@ -236,11 +237,11 @@ class Agent:
                 entropy_mean = np.mean(entropy_log)
                 
                 wandb.log({
-                    "Value": value_mean, 
-                    "Critic Loss": critic_loss_mean, 
-                    "Actor Loss": actor_loss_mean,
-                    "Entropy": entropy_mean,
-                    "Steps Progress": self.steps_idx
+                    "Progress/Value": value_mean, 
+                    "Progress/Critic Loss": critic_loss_mean, 
+                    "Progress/Actor Loss": actor_loss_mean,
+                    "Progress/Entropy": entropy_mean,
+                    "Progress/Steps Progress": self.steps_idx
                 })
 
     # TODO -> make this paralllel (distribute this function across different cpus)
@@ -329,15 +330,15 @@ class Agent:
         
         while self.steps_idx < max_steps:
             for worker in self.workers:
-                states, actions, true_values = self.collect_batch(worker, "Progress", None)
+                states, actions, true_values = self.collect_batch(worker, "Progress", None, len(self.workers))
                 for i, _ in enumerate(states):
                     self.memory.push(
                         states[i],
                         actions[i],
                         true_values[i]
                     )
+                self.steps_idx += self.batch_size
             
-            self.steps_idx += self.batch_size
             total_loss, kl_loss, ewc_loss = self.compress(ewc) # train
             updates += 1
             
@@ -364,10 +365,10 @@ class Agent:
                 
                 print(f"total_loss mean-100: {total_loss_mean}, kl_loss mean-100: {kl_loss_mean}, ewc_loss mean-100: {ewc_loss_mean}")
                 
-                wandb.log({"Distillation loss (KL Loss + EWC loss)": total_loss_mean,
-                           "KL Loss": kl_loss_mean,
-                           "EWC loss": ewc_loss_mean,
-                           "Steps Compress": self.steps_idx})
+                wandb.log({"Compress/Distillation loss (KL Loss + EWC loss)": total_loss_mean,
+                           "Compress/KL Loss": kl_loss_mean,
+                           "Compress/EWC loss": ewc_loss_mean,
+                           "Compress/Steps Compress": self.steps_idx})
 
     def save_active(self, step):
         """step + self.inc_active = the last digit adds the step size to the step size
