@@ -8,22 +8,6 @@ def get_args():
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
-        '--gail',
-        action='store_true',
-        default=False,
-        help='do imitation learning with gail')
-    parser.add_argument(
-        '--gail-experts-dir',
-        default='./gail_experts',
-        help='directory that contains expert demonstrations for gail')
-    parser.add_argument(
-        '--gail-batch-size',
-        type=int,
-        default=128,
-        help='gail batch size (default: 128)')
-    parser.add_argument(
-        '--gail-epoch', type=int, default=5, help='gail epochs (default: 5)')
-    parser.add_argument(
         '--lr', type=float, default=7e-4, help='learning rate (default: 7e-4)')
     parser.add_argument(
         '--eps',
@@ -83,21 +67,6 @@ def get_args():
         default=20,
         help='number of forward steps in A2C (default: 5)')
     parser.add_argument(
-        '--ppo-epoch',
-        type=int,
-        default=4,
-        help='number of ppo epochs (default: 4)')
-    parser.add_argument(
-        '--num-mini-batch',
-        type=int,
-        default=32,
-        help='number of batches for ppo (default: 32)')
-    parser.add_argument(
-        '--clip-param',
-        type=float,
-        default=0.2,
-        help='ppo clip parameter (default: 0.2)')
-    parser.add_argument(
         '--log-interval',
         type=int,
         default=10,
@@ -105,7 +74,7 @@ def get_args():
     parser.add_argument(
         '--save-interval',
         type=int,
-        default=100,
+        default=1000,
         help='save interval, one save per n updates (default: 100)')
     parser.add_argument(
         '--eval-interval',
@@ -113,10 +82,20 @@ def get_args():
         default=None,
         help='eval interval, one eval per n updates (default: None)')
     parser.add_argument(
-        '--num-env-steps',
+        '--eval-steps',
+        type=int,
+        default=5e4,
+        help='eval steps')
+    parser.add_argument(
+        '--num-env-steps-progress',
         type=int,
         default=10e6,
         help='number of environment steps to train (default: 10e6)')
+    parser.add_argument(
+        '--num-env-steps-compress',
+        type=int,
+        default=1e6,
+        help='number of environment steps to train (default: 1e6)')
     parser.add_argument(
         '--env-name',
         default='PongNoFrameskip-v4',
@@ -149,9 +128,14 @@ def get_args():
         action='store_true',
         default=False,
         help='use a linear schedule on the learning rate')
+    parser.add_argument(
+        '--visits',
+        type=int,
+        default=1,
+        help='How many visits to one task.')
     args = parser.parse_args()
 
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    args.cuda = not args.no_cuda and torch.backends.mps.is_available() # here mps backend
 
     assert args.algo in ['a2c', 'ppo', 'acktr']
     if args.recurrent_policy:

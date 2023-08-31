@@ -52,9 +52,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
             env = TimeLimitMask(env)
 
         if log_dir is not None:
-            env = Monitor(env,
-                          os.path.join(log_dir, str(rank)),
-                          allow_early_resets=allow_early_resets)
+            env = Monitor(env,os.path.join(log_dir, str(rank)), allow_early_resets=allow_early_resets)
             
         if len(env.observation_space.shape) == 3:
             env = EpisodicLifeEnv(env)
@@ -244,15 +242,17 @@ class VecPyTorchFrameStack(VecEnvWrapper):
     def reset(self):
         obs = self.venv.reset()
         # print(obs.shape)
-        obs = torch.unsqueeze(obs, 1)
+        # obs = torch.unsqueeze(obs, 1)
+        # print(obs.shape)
+        obs = obs.permute(1, 0, 2, 3)
         # print(obs.shape)
         if torch.backends.cudnn.deterministic:
             self.stacked_obs = torch.zeros(self.stacked_obs.shape)
         else:
             self.stacked_obs.zero_()
+        # print(self.stacked_obs.shape)
         self.stacked_obs[:, -self.shape_dim0:] = obs
 
-        # print(self.stacked_obs.shape)
         return self.stacked_obs
 
     def close(self):

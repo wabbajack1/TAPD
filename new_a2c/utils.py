@@ -4,8 +4,17 @@ import os
 import torch
 import torch.nn as nn
 
-from a2c_ppo_acktr.envs import VecNormalize
+from new_a2c.envs import VecNormalize
+from torch.nn import Module
+from typing import NamedTuple, List
+from torch import Tensor
 
+
+class LayerAndParameter(NamedTuple):
+    layer_name: str
+    layer: Module
+    parameter_name: str
+    parameter: Tensor
 
 # Get a render function
 def get_render_func(venv):
@@ -24,7 +33,6 @@ def get_vec_normalize(venv):
         return venv
     elif hasattr(venv, 'venv'):
         return get_vec_normalize(venv.venv)
-
     return None
 
 
@@ -51,9 +59,22 @@ def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
 
 
 def init(module, weight_init, bias_init, gain=1):
+    print(module)
+
+    original_device = module.weight.device
+    module.weight.data = module.weight.data.to('cpu')
+    module.bias.data = module.bias.data.to('cpu')
+    
     weight_init(module.weight.data, gain=gain)
     bias_init(module.bias.data)
+
+    module.weight.data = module.weight.data.to(original_device)
+    module.bias.data = module.bias.data.to(original_device)
     return module
+
+def custom_init(m):
+    if isinstance(m, (nn.Conv2d, nn.Linear)):
+        init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain('relu'))
 
 
 def cleanup_log_dir(log_dir):
@@ -63,3 +84,37 @@ def cleanup_log_dir(log_dir):
         files = glob.glob(os.path.join(log_dir, '*.monitor.csv'))
         for f in files:
             os.remove(f)
+
+
+def freeze_everything(model: Module, set_eval_mode: bool = True):
+    if set_eval_mode:
+        model.eval()
+
+    for layer_param in get_layers_and_params(model):
+        layer_param.parameter.requires_grad = False
+
+
+def unfreeze_everything(model: Module, set_train_mode: bool = True):
+    if set_train_mode:
+        model.train()
+
+    for layer_param in get_layers_and_params(model):
+        layer_param.parameter.requires_grad = True
+
+def get_layers_and_params(model: Module, prefix='') -> List[LayerAndParameter]:
+    result: List[LayerAndParameter] = []
+    for param_name, param in model.named_parameters(recurse=False):
+        result.append(LayerAndParameter(
+            prefix[:-1], model, prefix + param_name, param))
+
+    layer_name: str
+    layer: Module
+    for layer_name, layer in model.named_modules():
+        if layer == model:
+            continue
+
+        layer_complete_name = prefix + layer_name + '.'
+
+        result += get_layers_and_params(layer, prefix=layer_complete_name)
+
+    return result
