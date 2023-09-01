@@ -147,7 +147,7 @@ class Policy(nn.Module):
         return value, action, action_log_probs
 
     def get_value(self, inputs):
-        value, _ = self.base(inputs)
+        _, _, _, value, _ = self.base(inputs)
         return value
 
     def evaluate_actions(self, inputs, action):

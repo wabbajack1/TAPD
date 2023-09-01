@@ -53,6 +53,7 @@ def main():
     actor_critic_active = Policy(
         envs.observation_space.shape,
         envs.action_space)
+    # actor_critic_active.load_state_dict(torch.load("/Users/kerekmen/Developer/agnostic_rl/trained_models/a2c/active.pt")[0])
     actor_critic_active.to(device)
 
     actor_critic_kb = Policy(
@@ -78,7 +79,7 @@ def main():
         max_grad_norm=args.max_grad_norm)
     
     kb_agent = algo.Distillation(
-        big_policy,
+        actor_critic_active,
         actor_critic_kb,
         args.value_loss_coef,
         args.entropy_coef,
@@ -86,6 +87,8 @@ def main():
         eps=args.eps,
         alpha=args.alpha,
         max_grad_norm=args.max_grad_norm)
+    
+    # ewc = algo.EWC()
     
     for vis in range(args.visits):
         for env_name in environements:
@@ -95,22 +98,28 @@ def main():
 
             # progress phase
             print(5*"#", "Progress phase", 5*"#")
-            freeze_everything(big_policy.policy_a)
-            unfreeze_everything(big_policy.policy_b)
-            unfreeze_everything(big_policy.adaptor)
+            freeze_everything(actor_critic_kb)
+            unfreeze_everything(actor_critic_active)
+            unfreeze_everything(adaptor)
             progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name)
 
             # compress phase
             print(5*"#", "Compress phase", 5*"#")
-            freeze_everything(big_policy.policy_b)
-            freeze_everything(big_policy.adaptor)
+            freeze_everything(actor_critic_active)
+            freeze_everything(adaptor)
             unfreeze_everything(actor_critic_kb) # different from big_policy.policy_b in the memory
-            compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name)
+            compress(actor_critic_active, kb_agent, actor_critic_kb, args, envs, device, env_name, eval_log_dir)
 
             # calculate ewc-online to include for next compress activity, i.e. after compressing each task, update EWC
             # collect samples from current policy (here re-run the last x steps of progress)
             # compute the fim based on the current policy, because otherwise the fim would be not a good estimate (becaue on-policy i.e. without replay buffer)
             # collect training data from current kb knowledge policy
+            # if agent.ewc_init == True:
+            #     print("Distillation")
+            #     agent.compress_training(max_steps_compress, None)
+            # else:
+            #     print("Distillation + EWC")
+            #     agent.compress_training(max_steps_compress, ewc)
 
             # evaluation of kb column
             print(5*"#", "Evaluation phase", 5*"#")
@@ -228,7 +237,7 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
         #     # evaluate(actor_critic, obs_rms, args.env_name, args.seed,
         #     #          args.num_processes, eval_log_dir, device)
 
-def compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name):
+def compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name, eval_log_dir):
     global total_num_steps_compress
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,envs.observation_space.shape, envs.action_space)
@@ -305,6 +314,11 @@ def compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name
             wandb.log({f"Compress/Training/Score-{env_name}": np.mean(episode_rewards),
                        f"Compress/Training/KL-Loss-{env_name}": np.mean(kl_loss),
                        f"Compress/Training/Timesteps-{env_name}": total_num_steps_compress[env_name]})
+        
+        # if (args.eval_interval is not None and len(episode_rewards) > 1 and steps % args.eval_interval == 0):
+        #     print(5*"#", "Evaluation phase", 5*"#")
+        #     obs_rms = utils.get_vec_normalize(envs)
+        #     evaluate(args, actor_critic_kb, obs_rms, env_name, args.seed, args.num_processes, eval_log_dir, device)
 
 
 if __name__ == "__main__":

@@ -132,148 +132,144 @@ class Distillation():
         return kl_loss.item()
 
 
-# from copy import deepcopy
-# import torch
-# from torch import nn
-# from torch.nn import functional as F
-# from torch.autograd import Variable
-# import torch.utils.data
-# from typing import Optional
-# from commons.memory.CustomDataset import CustomDataset
-# from torch.utils.data.dataloader import DataLoader
-# from torch.nn.utils import parameters_to_vector
+from copy import deepcopy
+import torch
+from torch import nn
+from torch.autograd import Variable
+import torch.utils.data
+from typing import Optional
 
-# def variable(t: torch.Tensor, use_cuda=True, **kwargs):
-#     if torch.cuda.is_available() and use_cuda:
-#         t = t.cuda()
-#     return Variable(t, **kwargs)
+def variable(t: torch.Tensor, use_cuda=True, **kwargs):
+    if torch.cuda.is_available() and use_cuda:
+        t = t.cuda()
+    return Variable(t, **kwargs)
 
-# class EWC(object):
-#     def __init__(self, agent:None, model: nn.Module, ewc_lambda=175, ewc_gamma=0.4, batch_size_fisher=32, ewc_start_timestep_after=1000, device=None, env_name:Optional[str] = None):
-#         """The online ewc algo 
-#         Args:
-#             task (None): the task (in atari a env) for calculating the importance of task w.r.t the paramters
-#             model (nn.Module): the model which params are important to protect
-#             ewc_gamma (float, optional): the deacay factor. Defaults to 0.4.
-#             device (_type_, optional): _description_. Defaults to None.
-#         """
-#         if torch.cuda.is_available():
-#             self.FloatTensor = torch.cuda.FloatTensor
-#         else:
-#             self.FloatTensor = torch.FloatTensor
+class EWC(object):
+    def __init__(self, agent:None, model: nn.Module, ewc_lambda=175, ewc_gamma=0.4, batch_size_fisher=32, ewc_start_timestep_after=1000, device=None, env_name:Optional[str] = None):
+        """The online ewc algo 
+        Args:
+            task (None): the task (in atari a env) for calculating the importance of task w.r.t the paramters
+            model (nn.Module): the model which params are important to protect
+            ewc_gamma (float, optional): the deacay factor. Defaults to 0.4.
+            device (_type_, optional): _description_. Defaults to None.
+        """
+        if torch.cuda.is_available():
+            self.FloatTensor = torch.cuda.FloatTensor
+        else:
+            self.FloatTensor = torch.FloatTensor
             
-#         self.ewc_start_timestep = ewc_start_timestep_after
-#         self.model = model
-#         self.device = device
-#         self.ewc_gamma = ewc_gamma
-#         self.ewc_lambda = ewc_lambda
-#         self.env_name = env_name
-#         self.agent = agent # we need the memory module of this object (in atari domain task == env == data)
-#         self.batch_size_fisher = batch_size_fisher
+        self.ewc_start_timestep = ewc_start_timestep_after
+        self.model = model
+        self.device = device
+        self.ewc_gamma = ewc_gamma
+        self.ewc_lambda = ewc_lambda
+        self.env_name = env_name
+        self.agent = agent # we need the memory module of this object (in atari domain task == env == data)
+        self.batch_size_fisher = batch_size_fisher
 
-#         self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad and "critic" not in n}
-#         # self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad}
-#         self.mean_params = {}
-#         self.old_fisher = None
-#         self.fisher = self.calculate_fisher() # calculate the importance of params for the previous task
-#         self.mean_model = deepcopy(self.model)
+        self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad and "critic" not in n}
+        # self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad}
+        self.mean_params = {}
+        self.old_fisher = None
+        self.fisher = self.calculate_fisher() # calculate the importance of params for the previous task
+        self.mean_model = deepcopy(self.model)
         
-#         for n, p in deepcopy(self.params).items():
-#             self.mean_params[n] = variable(p.data)
+        for n, p in deepcopy(self.params).items():
+            self.mean_params[n] = variable(p.data)
     
-#     def calculate_fisher(self):
-#         print(f"Calculation of the task for the importance of each parameter: {self.env_name}")
-#         self.model.train()
+    def calculate_fisher(self):
+        print(f"Calculation of the task for the importance of each parameter: {self.env_name}")
+        self.model.train()
         
-#         fisher = {}
-#         for n, p in deepcopy(self.params).items():
-#             fisher[n] = variable(p.detach().clone().zero_())
+        fisher = {}
+        for n, p in deepcopy(self.params).items():
+            fisher[n] = variable(p.detach().clone().zero_())
             
 
-#         for states, actions, true_values in dataloader:
-#             #print("Parameters:", len(dataset), len(dataloader), states.shape, len(dataloader)/self.agent.no_of_workers, self.batch_size_fisher)
-#             # print("batch size ewc", states.shape, actions.shape, true_values.shape)
+        for states, actions, true_values in dataloader:
+            #print("Parameters:", len(dataset), len(dataloader), states.shape, len(dataloader)/self.agent.no_of_workers, self.batch_size_fisher)
+            # print("batch size ewc", states.shape, actions.shape, true_values.shape)
             
-#             # Calculate gradients
-#             self.model.zero_grad()
+            # Calculate gradients
+            self.model.zero_grad()
             
-#             states = states.to(self.device)
-#             actions = actions.to(self.device)
-#             true_values = true_values.to(self.device)
-#             values, log_probs, entropy = self.model.evaluate_action(states, actions)
+            states = states.to(self.device)
+            actions = actions.to(self.device)
+            true_values = true_values.to(self.device)
+            values, log_probs, entropy = self.model.evaluate_action(states, actions)
             
-#             values = torch.squeeze(values)
-#             log_probs = torch.squeeze(log_probs)
-#             entropy = torch.squeeze(entropy)
-#             true_values = torch.squeeze(true_values)
+            values = torch.squeeze(values)
+            log_probs = torch.squeeze(log_probs)
+            entropy = torch.squeeze(entropy)
+            true_values = torch.squeeze(true_values)
             
-#             advantages = true_values - values
-#             # critic_loss = advantages.pow(2).mean()
+            advantages = true_values - values
+            # critic_loss = advantages.pow(2).mean()
             
-#             actor_loss = -(log_probs * advantages.detach()).mean()
-#             # total_loss = ((0.5 * critic_loss) + actor_loss - (0.01 * entropy)).backward()
-#             actor_loss.backward() # calc the gradients and store it in grad
-#             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
+            actor_loss = -(log_probs * advantages.detach()).mean()
+            # total_loss = ((0.5 * critic_loss) + actor_loss - (0.01 * entropy)).backward()
+            actor_loss.backward() # calc the gradients and store it in grad
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
             
-#             # Update Fisher information matrix
-#             # y_t = a * y_t + (1-a)*y_{t-1}
-#             for name, param in self.model.named_parameters():
-#                 if param.grad is not None and "critic" not in name:
-#                     if self.old_fisher is not None and name in self.old_fisher:
-#                         fisher[name] += self.ewc_gamma * self.old_fisher[name] + param.grad.detach().clone().pow(2)
-#                     else:
-#                         fisher[name] += param.grad.detach().clone().pow(2)
+            # Update Fisher information matrix
+            # y_t = a * y_t + (1-a)*y_{t-1}
+            for name, param in self.model.named_parameters():
+                if param.grad is not None and "critic" not in name:
+                    if self.old_fisher is not None and name in self.old_fisher:
+                        fisher[name] += self.ewc_gamma * self.old_fisher[name] + param.grad.detach().clone().pow(2)
+                    else:
+                        fisher[name] += param.grad.detach().clone().pow(2)
 
-#         print(f"len of dataloader {len(dataloader)}, no of workers {self.agent.no_of_workers}")
-#         for name in fisher:
-#             # fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data).detach()) / (torch.std(fisher[name].data).detach() + 1e-08)
-#             fisher[name].data /= len(dataloader)/self.agent.no_of_workers
+        print(f"len of dataloader {len(dataloader)}, no of workers {self.agent.no_of_workers}")
+        for name in fisher:
+            # fisher[name].data = (fisher[name].data - torch.mean(fisher[name].data).detach()) / (torch.std(fisher[name].data).detach() + 1e-08)
+            fisher[name].data /= len(dataloader)/self.agent.no_of_workers
         
-#         self.old_fisher = fisher.copy()
-#         self.model.train()
+        self.old_fisher = fisher.copy()
+        self.model.train()
         
-#         return fisher
+        return fisher
     
-#     def penalty(self, model: nn.Module):
-#         """Calculate the penalty to add to loss.
+    def penalty(self, model: nn.Module):
+        """Calculate the penalty to add to loss.
 
-#         Args:
-#             ewc_lambda (int): the lambda value
-#             model (nn.Module): The model which gets regulized (its the model, which traines and gets dynamically updated)
+        Args:
+            ewc_lambda (int): the lambda value
+            model (nn.Module): The model which gets regulized (its the model, which traines and gets dynamically updated)
 
-#         Returns:
-#             _type_: float
-#         """
-#         loss = 0
-#         fisher_sum = 0
-#         mean_params_sum = 0
-#         for n, p in model.named_parameters():
-#             if "critic" not in n:
-#                 # fisher = torch.sqrt(self.fisher[n] + 1e-08)
-#                 fisher = self.fisher[n]
-#                 loss += (fisher * (p - self.mean_params[n]).pow(2)).sum()
-#                 fisher_sum += abs(self.fisher[n]).sum()
-#                 mean_params_sum += self.mean_params[n].sum()
-#                 # print(n, torch.sqrt(self.fisher[n] + 1e-05))
+        Returns:
+            _type_: float
+        """
+        loss = 0
+        fisher_sum = 0
+        mean_params_sum = 0
+        for n, p in model.named_parameters():
+            if "critic" not in n:
+                # fisher = torch.sqrt(self.fisher[n] + 1e-08)
+                fisher = self.fisher[n]
+                loss += (fisher * (p - self.mean_params[n]).pow(2)).sum()
+                fisher_sum += abs(self.fisher[n]).sum()
+                mean_params_sum += self.mean_params[n].sum()
+                # print(n, torch.sqrt(self.fisher[n] + 1e-05))
         
-#         print("EWC Loss", (self.ewc_lambda * loss).item(), "loss fisher", loss.item(), f"EWC lambda {self.ewc_lambda}", f"Fisher: {fisher_sum.sum()}", f"mean params: {mean_params_sum.sum()}")
-#         return self.ewc_lambda * loss
+        print("EWC Loss", (self.ewc_lambda * loss).item(), "loss fisher", loss.item(), f"EWC lambda {self.ewc_lambda}", f"Fisher: {fisher_sum.sum()}", f"mean params: {mean_params_sum.sum()}")
+        return self.ewc_lambda * loss
     
-#     def update(self, agent, model, env_name):
-#         """Update the model, after learning the latest task. Here we calculate
-#         directly the FIM and also reset the mean_params.
+    def update(self, agent, model, env_name):
+        """Update the model, after learning the latest task. Here we calculate
+        directly the FIM and also reset the mean_params.
 
-#         Args:
-#             agent: to get the new data (experience) of the latest run from the agents memory (current policy)
-#             model (_type_): _description_
-#             new_task (_type_): _description_
-#         """
-#         self.agent = agent
-#         self.env_name = env_name
-#         self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad and "critic" not in n}
-#         self.fisher = self.calculate_fisher()
-#         for n, p in deepcopy(self.params).items():
-#             self.mean_params[n] = variable(p.data)
+        Args:
+            agent: to get the new data (experience) of the latest run from the agents memory (current policy)
+            model (_type_): _description_
+            new_task (_type_): _description_
+        """
+        self.agent = agent
+        self.env_name = env_name
+        self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad and "critic" not in n}
+        self.fisher = self.calculate_fisher()
+        for n, p in deepcopy(self.params).items():
+            self.mean_params[n] = variable(p.data)
             
             
 # # def compute_distance(model1, model2, mode="euclidean"):
