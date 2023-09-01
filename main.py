@@ -20,6 +20,7 @@ from new_a2c.storage import RolloutStorage
 from evaluation import evaluate
 import wandb
 from new_a2c.utils import freeze_everything, unfreeze_everything
+from datetime import datetime
 
 # total timesteps across all visits
 total_num_steps_progess = {}
@@ -40,6 +41,9 @@ def main():
     eval_log_dir = log_dir + "_eval"
     utils.cleanup_log_dir(log_dir)
     utils.cleanup_log_dir(eval_log_dir)
+    timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    args.algo = args.algo + "/" + timestamp_str
+
 
     torch.set_num_threads(1)
     device = torch.device("mps:0" if args.cuda else "cpu")
@@ -53,7 +57,7 @@ def main():
     actor_critic_active = Policy(
         envs.observation_space.shape,
         envs.action_space)
-    # actor_critic_active.load_state_dict(torch.load("/Users/kerekmen/Developer/agnostic_rl/trained_models/a2c/active.pt")[0])
+    actor_critic_active.load_state_dict(torch.load("/Users/kerekmen/Developer/agnostic_rl/trained_models/a2c/active.pt")[0])
     actor_critic_active.to(device)
 
     actor_critic_kb = Policy(
@@ -99,16 +103,14 @@ def main():
             # progress phase
             print(5*"#", "Progress phase", 5*"#")
             freeze_everything(actor_critic_kb)
-            unfreeze_everything(actor_critic_active)
-            unfreeze_everything(adaptor)
+            unfreeze_everything(big_policy)
             progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name)
 
             # compress phase
             print(5*"#", "Compress phase", 5*"#")
-            freeze_everything(actor_critic_active)
-            freeze_everything(adaptor)
+            freeze_everything(big_policy)
             unfreeze_everything(actor_critic_kb) # different from big_policy.policy_b in the memory
-            compress(actor_critic_active, kb_agent, actor_critic_kb, args, envs, device, env_name, eval_log_dir)
+            compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name, eval_log_dir)
 
             # calculate ewc-online to include for next compress activity, i.e. after compressing each task, update EWC
             # collect samples from current policy (here re-run the last x steps of progress)
@@ -134,7 +136,7 @@ def main():
             adaptor.reset_weights()
 
             # use lateral connection after training min of one task, i.e. right after the above code
-            big_policy.use_lateral_connection = True
+            big_policy.use_lateral_connection = False
 
     print(20*"#", f"Training done!", 20*"#")
 
@@ -326,7 +328,7 @@ if __name__ == "__main__":
         # set the wandb project where this run will be logged
         project="A2C-ikostrikov",
         entity="agnostic",
-        # mode="disabled",
+        mode="disabled",
         # id="nd07r8xn",
         # resume="allow"
     )
