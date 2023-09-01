@@ -79,7 +79,7 @@ def main():
         max_grad_norm=args.max_grad_norm)
     
     kb_agent = algo.Distillation(
-        actor_critic_active,
+        big_policy,
         actor_critic_kb,
         args.value_loss_coef,
         args.entropy_coef,
