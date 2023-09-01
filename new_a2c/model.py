@@ -29,6 +29,7 @@ class BigPolicy(nn.Module):
         self.policy_b = policy_b # active column
         self.adaptor = adaptor
         self.use_lateral_connection = use_lateral_connection
+        self.experience = 0
 
         try:
             wandb.watch(self, log_freq=100, log="all", log_graph=True)

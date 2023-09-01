@@ -32,6 +32,49 @@ except ImportError:
     pass
 
 
+UNIFIED_ACTIONS = ['NOOP', 'FIRE', 'RIGHT', 'LEFT']
+
+def environment_mapping_action(env):
+    
+    if "Pong" in env.spec.id:
+        # "Pong" already has the desired action space
+        action_map = {
+            0: 0,  # NOOP
+            1: 1,  # FIRE
+            2: 2,  # RIGHT
+            3: 3,  # LEFT
+        }
+    if "BeamRider" in env.spec.id:
+        # Adjusted action maps for "BeamRider" 
+        action_map = {
+            0: 0,  # NOOP
+            1: 1,  # FIRE
+            2: 3,  # RIGHT
+            3: 4,  # LEFT
+        }
+    if "SpaceInvaders" in env.spec.id:
+        # Adjusted action maps for "SpaceInvaders"
+        action_map = {
+            0: 0,  # NOOP
+            1: 1,  # FIRE
+            2: 2,  # RIGHT
+            3: 3   # LEFT
+        }
+
+    env = UnifiedActionWrapper(env, action_map=action_map)
+    return env
+
+class UnifiedActionWrapper(gym.Wrapper):
+
+    def __init__(self, env, action_map):
+        super(UnifiedActionWrapper, self).__init__(env)
+        self.action_map = action_map
+        self.action_space = gym.spaces.Discrete(len(UNIFIED_ACTIONS))
+
+    def step(self, action):
+        return self.env.step(self.action_map[np.array(action).item()])
+    
+
 def make_env(env_id, seed, rank, log_dir, allow_early_resets):
     def _thunk():
         if env_id.startswith("dm"):
@@ -60,6 +103,8 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
                 env = FireResetEnv(env)
             env = WarpFrame(env, width=84, height=84)
             env = ClipRewardEnv(env)
+            env = environment_mapping_action(env) # @ kerekmen
+
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape

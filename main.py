@@ -48,7 +48,7 @@ def main():
     torch.set_num_threads(1)
     device = torch.device("mps:0" if args.cuda else "cpu")
 
-    environements = ["PongNoFrameskip-v4"]
+    environements = ["PongNoFrameskip-v4", "SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4"]
 
     #### init first environment for architecture initialization ####
     envs = make_vec_envs(args.env_name, args.seed, 1, args.gamma, args.log_dir, device, False)
@@ -57,12 +57,13 @@ def main():
     actor_critic_active = Policy(
         envs.observation_space.shape,
         envs.action_space)
-    actor_critic_active.load_state_dict(torch.load("/Users/kerekmen/Developer/agnostic_rl/trained_models/a2c/active.pt")[0])
+    # actor_critic_active.load_state_dict(torch.load("/Users/kerekmen/Developer/agnostic_rl/trained_models/a2c/active.pt")[0])
     actor_critic_active.to(device)
 
     actor_critic_kb = Policy(
         envs.observation_space.shape,
         envs.action_space)
+    # actor_critic_kb.load_state_dict(torch.load("/Users/kerekmen/Developer/agnostic_rl/trained_models/a2c/kb.pt")[0])
     actor_critic_kb.to(device)
 
     adaptor = Adaptor()
@@ -92,7 +93,11 @@ def main():
         alpha=args.alpha,
         max_grad_norm=args.max_grad_norm)
     
-    # ewc = algo.EWC()
+    ewc = algo.EWConline(args.entropy_coef,
+                   args.ewc_lambda,
+                   args.ewc_gamma,
+                   args.ewc_start_timestep_after,
+                   max_grad_norm=args.max_grad_norm)
     
     for vis in range(args.visits):
         for env_name in environements:
@@ -104,29 +109,35 @@ def main():
             print(5*"#", "Progress phase", 5*"#")
             freeze_everything(actor_critic_kb)
             unfreeze_everything(big_policy)
-            progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name)
+            progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name, vis)
 
             # compress phase
             print(5*"#", "Compress phase", 5*"#")
             freeze_everything(big_policy)
             unfreeze_everything(actor_critic_kb) # different from big_policy.policy_b in the memory
-            compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name, eval_log_dir)
 
             # calculate ewc-online to include for next compress activity, i.e. after compressing each task, update EWC
             # collect samples from current policy (here re-run the last x steps of progress)
             # compute the fim based on the current policy, because otherwise the fim would be not a good estimate (becaue on-policy i.e. without replay buffer)
             # collect training data from current kb knowledge policy
-            # if agent.ewc_init == True:
-            #     print("Distillation")
-            #     agent.compress_training(max_steps_compress, None)
-            # else:
-            #     print("Distillation + EWC")
-            #     agent.compress_training(max_steps_compress, ewc)
+            if big_policy.experience > 0:
+                print("Distill + EWC")
+                compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env_name, eval_log_dir, vis)
+                big_policy.experience += 1
+            else:
+                compress(big_policy, kb_agent, actor_critic_kb, None, args, envs, device, env_name, eval_log_dir, vis)
+                big_policy.experience += 1
+
+            # compute the fisher
+            ewc.update_parameters(actor_critic_kb, env_name) # also like init function in this context
+            gather_fisher_samples(actor_critic_kb, ewc, args, envs, device)
 
             # evaluation of kb column
             print(5*"#", "Evaluation phase", 5*"#")
-            obs_rms = utils.get_vec_normalize(envs)
-            evaluate(args, actor_critic_kb, obs_rms, env_name, args.seed, args.num_processes, eval_log_dir, device)
+            for eval_env_name in environements:
+                print(2*"#", f"Eval{eval_env_name}", 2*"#")
+                obs_rms = utils.get_vec_normalize(envs)
+                evaluate(args, actor_critic_kb, obs_rms, eval_env_name, args.seed, args.num_processes, eval_log_dir, device)
 
             # update the model, to not include into the comp hist in the compress phase
             big_policy.update_model(actor_critic_kb)
@@ -136,11 +147,11 @@ def main():
             adaptor.reset_weights()
 
             # use lateral connection after training min of one task, i.e. right after the above code
-            big_policy.use_lateral_connection = False
+            big_policy.use_lateral_connection = True
 
     print(20*"#", f"Training done!", 20*"#")
 
-def progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name):
+def progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name, vis):
     """The progress phase, where the active learning is perfomed.
 
     Args:
@@ -210,7 +221,7 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
             torch.save([
                 actor_critic_active.state_dict(),
                 getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
-            ], os.path.join(save_path, "active" + ".pt"))
+            ], os.path.join(save_path, env_name + f"-{steps}" + f"-active-visit{vis}" + ".pt"))
 
         
         # log metrics
@@ -239,7 +250,7 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
         #     # evaluate(actor_critic, obs_rms, args.env_name, args.seed,
         #     #          args.num_processes, eval_log_dir, device)
 
-def compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name, eval_log_dir):
+def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env_name, eval_log_dir, vis):
     global total_num_steps_compress
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,envs.observation_space.shape, envs.action_space)
@@ -285,7 +296,7 @@ def compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.gae_lambda, args.use_proper_time_limits)
 
         # gradient update
-        kl_loss = kb_agent.update(rollouts)
+        kl_loss = kb_agent.update(rollouts, ewc)
         rollouts.after_update()
 
         # save for every interval-th episode or for the last epoch
@@ -299,7 +310,12 @@ def compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name
             torch.save([
                 actor_critic_kb.state_dict(),
                 getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
-            ], os.path.join(save_path, "kb" + ".pt"))
+            ], os.path.join(save_path, env_name + f"-{steps}" + f"-kb-visit{vis}" + ".pt"))
+
+
+        # update counter #tdb (should it be applied on the global timestep or the current one?)
+        if ewc is not None:
+            ewc.ewc_timestep_counter += args.num_processes * args.num_steps
 
         # log metrics
         total_num_steps_compress.setdefault(env_name, 0)
@@ -322,6 +338,59 @@ def compress(big_policy, kb_agent, actor_critic_kb, args, envs, device, env_name
         #     obs_rms = utils.get_vec_normalize(envs)
         #     evaluate(args, actor_critic_kb, obs_rms, env_name, args.seed, args.num_processes, eval_log_dir, device)
 
+def gather_fisher_samples(current_policy, ewc, args, envs, device):
+    """_summary_
+
+    Args:
+        current_policy (_type_): The current policy to calculate the estimates of the fisher (here always the kb network!)
+        ewc (_type_): The ewc object to calculate the ewc fisher (here like update)
+        active_agent (_type_): _description_
+        args (_type_): _description_
+        envs (_type_): _description_
+        device (_type_): _description_
+        env_name (_type_): _description_
+    """
+
+    ewc.empty_fisher() # init fisher for computation of new fisher
+    rollouts = RolloutStorage(args.steps_calucate_fisher, args.num_processes, envs.observation_space.shape, envs.action_space)
+    obs = envs.reset()
+    rollouts.obs[0].copy_(obs)
+    rollouts.to(device)
+
+    episode_rewards = deque(maxlen=100)
+
+    start = time.time()
+    for _ in range(args.batch_size_fisher):
+        # nmb of steps (rollouts) before update
+        for step in range(args.steps_calucate_fisher):
+            # Sample actions
+            with torch.no_grad():
+                value, action, action_log_prob = current_policy.act(rollouts.obs[step])
+
+            # Obser reward and next obs
+            obs, reward, done, infos = envs.step(action)
+
+            for info in infos:
+                if 'episode' in info.keys():
+                    episode_rewards.append(info['episode']['r'])
+
+            # If done then clean the history of observations.
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+            bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in info.keys() else [1.0] for info in infos])
+            rollouts.insert(obs, action, action_log_prob, value, reward, masks, bad_masks)
+        
+
+        with torch.no_grad():
+            next_value = current_policy.get_value(rollouts.obs[-1]).detach()
+
+        rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.gae_lambda, args.use_proper_time_limits)
+
+        # gradient update
+        ewc.calculate_fisher(rollouts)
+        rollouts.after_update()
+
+    ewc.old_fisher = ewc.normalize_fisher()
+    ewc.empty_fisher()
 
 if __name__ == "__main__":
     wandb.init(
@@ -333,31 +402,3 @@ if __name__ == "__main__":
         # resume="allow"
     )
     main()
-
-    # args = get_args()
-    
-    # log_dir = os.path.expanduser(args.log_dir)
-    # eval_log_dir = log_dir + "_eval"
-    # utils.cleanup_log_dir(log_dir)
-    # utils.cleanup_log_dir(eval_log_dir)
-
-    # torch.set_num_threads(1)
-    # device = torch.device("mps:0" if args.cuda else "cpu")
-
-    # # init first environment
-    # envs = make_vec_envs(args.env_name, args.seed, args.num_processes, args.gamma, args.log_dir, device, False)
-
-    # actor_critic_active = Policy(
-    #     envs.observation_space.shape,
-    #     envs.action_space)
-    # actor_critic_active.to(device)
-
-    # actor_critic_kb = Policy(
-    #     envs.observation_space.shape,
-    #     envs.action_space)
-    # actor_critic_kb.to(device)
-
-    # big_net = BigPolicy(actor_critic_kb, actor_critic_active)
-
-    # for n, p in big_net.named_parameters():
-    #     print(n)

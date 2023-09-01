@@ -1,0 +1,48 @@
+
+
+big policy:
+	kb model = copy(model)
+
+	active model = active model
+
+after trainning (compression)
+
+big_policy.update_model(kb_model)
+
+
+
+
+----
+Replicating:
+To replicate the results, we need to scrutinize each stage of the P&C framework and break down its components. Therefore, the activation phase should be independently examined in relation to the compression phase. Following each successful iteration, we progressively assemble the steps to evaluate the overall performance.
+
+
+Replicate active phase (ii. iv. -> test both desiderata from p&c paper)
+	First test active phase (see if agent is learning a task, taking into account the
+	training time, because its a huge bottleneck of the p&c framework 
+	(which was not mentioned in the paper))
+
+Repilcate compress phase (i. ii. iii. -> -||-)
+	1. Test compression: Has the kb column learning from the active column
+	2. Test EWC: Task_a, Task_b already learned, i.e. know use ewc in between and distill
+	knowledgde to test it.
+
+
+i. "should not suffer from catastrophic forgetting"
+Here test ewc framework
+
+ii. "taking advantage of knowledge extracted from previous tasks"
+Forward transfer:
+To test forward transfer consider learrning one tasks and after learning reinit weights, and use lateral connections from kb to see if the agent learns faster (i.e. less time/samples in the env). (turn on use of lateral connections / turn off --> to see results)
+
+iii. "scalable to different tasks"
+
+iv. postive backward transfer
+After assemple all steps, see if learning one task helps to learn the previos task. I.e. consider task_a, and task_b. 
+	1. Task task_a gets evaluated and eximne performnce
+	2. Task task_b gets evaluated
+	3. Again all task gets evalauted, but without retraining task_a, here task_a is
+	better than before, because task_b was trained and the agent extracted useful
+	knowledge.
+
+

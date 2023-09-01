@@ -89,12 +89,12 @@ def get_args():
     parser.add_argument(
         '--num-env-steps-progress',
         type=int,
-        default=10e6,
+        default=1.5e6,
         help='number of environment steps to train (default: 10e6)')
     parser.add_argument(
         '--num-env-steps-compress',
         type=int,
-        default=1e6,
+        default=2e5,
         help='number of environment steps to train (default: 1e6)')
     parser.add_argument(
         '--env-name',
@@ -133,6 +133,31 @@ def get_args():
         type=int,
         default=1,
         help='How many visits to one task.')
+    parser.add_argument(
+        '--batch-size-fisher',
+        type=int,
+        default=32,
+        help='How many batches to calculate the fisher information')
+    parser.add_argument(
+        '--steps-calucate-fisher',
+        type=int,
+        default=100,
+        help='Number of samples to calculate the fisher estimation (how many steps in the environment).')
+    parser.add_argument(
+        '--ewc-start-timestep-after',
+        type=int,
+        default=1e5,
+        help='When to start the calucation of fisher estimation')
+    parser.add_argument(
+        '--ewc-gamma',
+        type=int,
+        default=0.3,
+        help='decay factor (i.e. 1 does not forget old task)')
+    parser.add_argument(
+        '--ewc-lambda',
+        type=int,
+        default=75,
+        help='How large should we consider the ewc penalty')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.backends.mps.is_available() # here mps backend
