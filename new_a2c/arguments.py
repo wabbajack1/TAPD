@@ -97,6 +97,11 @@ def get_args():
         default=2e5,
         help='number of environment steps to train (default: 1e6)')
     parser.add_argument(
+        '--num-env-steps-agnostic',
+        type=int,
+        default=100_000,
+        help='number of environment steps to train after sampling randomly.')
+    parser.add_argument(
         '--env-name',
         default='PongNoFrameskip-v4',
         help='environment to train on (default: PongNoFrameskip-v4)')
@@ -142,7 +147,7 @@ def get_args():
         '--steps-calucate-fisher',
         type=int,
         default=100,
-        help='Number of samples to calculate the fisher estimation (how many steps in the environment).')
+        help="How many times batches are sampled from the environment during computation of the Fisher importance")
     parser.add_argument(
         '--ewc-start-timestep-after',
         type=int,
@@ -156,8 +161,13 @@ def get_args():
     parser.add_argument(
         '--ewc-lambda',
         type=int,
-        default=75,
+        default=200,
         help='How large should we consider the ewc penalty')
+    parser.add_argument(
+        '--agnostic-phase',
+        type=bool,
+        default=False,
+        help='Enable agnostic phase')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.backends.mps.is_available() # here mps backend

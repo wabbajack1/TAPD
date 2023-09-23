@@ -8,7 +8,6 @@ from new_a2c.distributions import Bernoulli, Categorical, DiagGaussian
 from new_a2c.utils import init, custom_init
 from copy import deepcopy
 
-
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
@@ -39,28 +38,26 @@ class BigPolicy(nn.Module):
     def update_model(self, policy):
         self.policy_a = deepcopy(policy)
 
-    def forward(self, inputs):
-        a1, a2, a3, _, a4 = self.policy_a(inputs)
+    def forward(self, inputs, action=None):
+        a1, a2, _, a3 = self.policy_a(inputs)
 
         # use adaptor, after seeing one experience/task from inputs of the policy_b
         if self.use_lateral_connection:
-            x1, x2, x3, x4 = self.adaptor(a1, a2, a3, a4)
+            x1, x2, x3 = self.adaptor(a1, a2, a3)
             b1 = self.policy_b.base.main[:2](inputs/255.0)
             b1 = b1 + x1
 
             b2 = self.policy_b.base.main[2:4](b1)
             b2 = b2 + x2
 
-            b3 = self.policy_b.base.main[4:6](b2)
+            b3 = self.policy_b.base.main[4:](b2)
             b3 = b3 + x3
-
-            b4 = self.policy_b.base.main[6:](b3)
-            b4 = b4 + x4
-            critic_b4 = self.policy_b.base.critic_linear(b4)
+            critic_b3 = self.policy_b.base.critic_linear(b3)
         else:
-            _, _, _, critic_b4, b4 = self.policy_b(inputs)
+            _, _, critic_b3, b3 = self.policy_b(inputs)
 
-        return critic_b4, b4
+
+        return critic_b3, b3
 
     def act(self, inputs, deterministic=False):
         value, actor_features = self.forward(inputs)
@@ -129,11 +126,11 @@ class Policy(nn.Module):
         return self.base.recurrent_hidden_state_size
 
     def forward(self, inputs):
-        x1, x2, x3, value, actor_features = self.base(inputs)
-        return x1, x2, x3, value, actor_features
+        x1, x2, value, actor_features = self.base(inputs)
+        return x1, x2, value, actor_features
 
     def act(self, inputs, deterministic=False):
-        _, _, _, value, actor_features = self.base(inputs)
+        _, _, value, actor_features = self.base(inputs)
         dist = self.dist(actor_features)
 
         if deterministic:
@@ -148,11 +145,11 @@ class Policy(nn.Module):
         return value, action, action_log_probs
 
     def get_value(self, inputs):
-        _, _, _, value, _ = self.base(inputs)
+        _, _, value, _ = self.base(inputs)
         return value
 
     def evaluate_actions(self, inputs, action):
-        _, _, _, value, actor_features = self.base(inputs)
+        _, _, value, actor_features = self.base(inputs)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
@@ -255,18 +252,17 @@ class NNBase(nn.Module):
         return x, hxs
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, hidden_size=512):
+    def __init__(self, num_inputs, hidden_size=256):
         super(CNNBase, self).__init__(hidden_size, hidden_size)
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
 
         self.main = nn.Sequential(
-            init_(nn.Conv2d(num_inputs, 32, 8, stride=4)), nn.ReLU(),
-            init_(nn.Conv2d(32, 64, 4, stride=2)), nn.ReLU(),
-            init_(nn.Conv2d(64, 32, 3, stride=1)), nn.ReLU(), Flatten(),
-            init_(nn.Linear(32 * 7 * 7, hidden_size)), nn.ReLU()
-            )
+            init_(nn.Conv2d(num_inputs, 16, 8, stride=4)), nn.ReLU(),
+            init_(nn.Conv2d(16, 32, 4, stride=2)), nn.ReLU(), Flatten(),
+            init_(nn.Linear(32 * 9 * 9, hidden_size)), nn.ReLU()
+        )
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
@@ -278,10 +274,9 @@ class CNNBase(NNBase):
     def forward(self, inputs):
         x1 = self.main[:2](inputs / 255.0)
         x2 = self.main[2:4](x1)
-        x3 = self.main[4:6](x2)
-        x4 = self.main[6:](x3)
+        x3 = self.main[4:](x2)
 
-        return x1, x2, x3, self.critic_linear(x4), x4
+        return x1, x2, self.critic_linear(x3), x3
 
 class MLPBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=64):
@@ -330,19 +325,20 @@ class SingleLayerMLP(nn.Module):
         return x
     
 class Adaptor(nn.Module):
+
+
     """_summary_ new
 
     Args:
         nn (_type_): _description_
     """
-    def __init__(self, hidden_size=512):
+    def __init__(self, hidden_size=256):
         super(Adaptor, self).__init__()
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain('relu'))
         
-        self.conv1_adaptor = init_(nn.Conv2d(32, 32, kernel_size=1))
-        self.conv2_adaptor = init_(nn.Conv2d(64, 64, kernel_size=1))
-        self.conv3_adaptor = init_(nn.Conv2d(32, 32, kernel_size=1))
+        self.conv1_adaptor = init_(nn.Conv2d(16, 16, kernel_size=1))
+        self.conv2_adaptor = init_(nn.Conv2d(32, 32, kernel_size=1))
         
         self.single_layer_mlp = nn.Sequential(
             Flatten(),
@@ -354,13 +350,12 @@ class Adaptor(nn.Module):
 
         self.train()
 
-    def forward(self, x1, x2, x3, x4):
+    def forward(self, x1, x2, x3):
         x1 = self.conv1_adaptor(x1)
         x2 = self.conv2_adaptor(x2)
-        x3 = self.conv3_adaptor(x3)
-        x4 = self.single_layer_mlp(x4)
+        x3 = self.single_layer_mlp(x3)
 
-        return x1, x2, x3, x4
+        return x1, x2, x3
     
     def reset_weights(self):
         print("\nRESETTING WEIGHTS")
@@ -369,3 +364,50 @@ class Adaptor(nn.Module):
         #     if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
         #         m.reset_parameters()
         #         print(f"Name of Tensor {name}: {m}")
+
+class IntrinsicCuriosityModule(nn.Module):
+    def __init__(self, obs_shape, num_actions):
+        super(IntrinsicCuriosityModule, self).__init__()
+        # self.feature_size = 32 * 7 * 7
+        self.feature_size = 288
+        num_inputs = obs_shape[0]
+
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
+        
+        # self.conv = nn.Sequential(
+        #     nn.Conv2d(num_inputs, 32, 8, stride=4), nn.ELU(),
+        #     nn.Conv2d(32, 64, 4, stride=2), nn.ELU(),
+        #     nn.Conv2d(64, 32, 3, stride=1), nn.ELU(),
+        # )
+
+        self.conv = nn.Sequential(nn.Conv2d(num_inputs, 32, 3, stride=2, padding=1),
+                                  nn.ReLU(),
+                                  nn.Conv2d(32, 32, 3, stride=2, padding=1),
+                                  nn.ReLU(),
+                                  nn.Conv2d(32, 32, 3, stride=2, padding=1),
+                                  nn.ReLU(),
+                                  nn.Conv2d(32, 32, 3, stride=2, padding=1),
+                                  nn.ReLU(),
+                                  nn.Conv2d(32, 32, 3, stride=2, padding=1),
+                                  nn.ReLU()
+        )
+
+        
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('leaky_relu'))
+        
+        self.forward_net = nn.Sequential(
+            nn.Linear(self.feature_size + num_actions, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, self.feature_size)
+        )
+
+    def forward(self, state, next_state, action):
+        state_ft = self.conv(state)
+        next_state_ft = self.conv(next_state)
+        state_ft = state_ft.view(-1, self.feature_size)
+        next_state_ft = next_state_ft.view(-1, self.feature_size)
+        # print(state_ft.shape,next_state_ft.shape)
+        # print(torch.cat((state_ft, action), 1).shape)
+        return self.forward_net(torch.cat((state_ft, action), 1)), next_state_ft

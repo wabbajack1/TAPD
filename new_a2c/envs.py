@@ -5,15 +5,15 @@ import numpy as np
 import torch
 from gym.spaces.box import Box
 from gym.wrappers.clip_action import ClipAction
-from stable_baselines3.common.atari_wrappers import (ClipRewardEnv,
+from new_a2c.stable_baselines3.common.atari_wrappers import (ClipRewardEnv,
                                                      EpisodicLifeEnv,
                                                      FireResetEnv,
                                                      MaxAndSkipEnv,
                                                      NoopResetEnv, WarpFrame)
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
+from new_a2c.stable_baselines3.common.monitor import Monitor
+from new_a2c.stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
                                               VecEnvWrapper)
-from stable_baselines3.common.vec_env.vec_normalize import \
+from new_a2c.stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
 try:
@@ -60,6 +60,14 @@ def environment_mapping_action(env):
             2: 2,  # RIGHT
             3: 3   # LEFT
         }
+    if "DemonAttack" in env.spec.id:
+        # Adjusted action maps for "SpaceInvaders"
+        action_map = {
+            0: 0,  # NOOP
+            1: 1,  # FIRE
+            2: 2,  # RIGHT
+            3: 3   # LEFT
+        }
 
     env = UnifiedActionWrapper(env, action_map=action_map)
     return env
@@ -75,14 +83,14 @@ class UnifiedActionWrapper(gym.Wrapper):
         return self.env.step(self.action_map[np.array(action).item()])
     
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets):
+def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
     def _thunk():
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
             env = dmc2gym.make(domain_name=domain, task_name=task)
             env = ClipAction(env)
         else:
-            env = gym.make(env_id)
+            env = gym.make(env_id, full_action_space=False)
 
         # is_atari = hasattr(gym.envs, 'atari') and isinstance(
         #     env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
@@ -95,6 +103,9 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
             env = TimeLimitMask(env)
 
         if log_dir is not None:
+            # if args is not None:
+            #     env = gym.wrappers.RecordVideo(env, os.path.join(args.save_dir, args.algo), episode_trigger = lambda x: (x+1) % 2 == 0)
+            #     print(env)
             env = Monitor(env,os.path.join(log_dir, str(rank)), allow_early_resets=allow_early_resets)
             
         if len(env.observation_space.shape) == 3:
@@ -103,7 +114,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
                 env = FireResetEnv(env)
             env = WarpFrame(env, width=84, height=84)
             env = ClipRewardEnv(env)
-            env = environment_mapping_action(env) # @ kerekmen
+            env = environment_mapping_action(env)
 
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
