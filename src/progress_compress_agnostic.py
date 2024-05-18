@@ -42,7 +42,7 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes, envs.observation_space.shape, envs.action_space)
     obs = envs.reset()
-    rollouts.obs[0].copy_(obs/255.0)
+    rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=100)
@@ -68,7 +68,6 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-            obs = obs/255.0
 
             # print(action.shape, rollouts.obs[step].shape, obs.shape)
 
@@ -138,7 +137,7 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,envs.observation_space.shape, envs.action_space)
     obs = envs.reset()
-    rollouts.obs[0].copy_(obs/255.0)
+    rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=100)
@@ -174,7 +173,6 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
                 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-            obs = obs/255.0
 
             for info in infos:
                 if 'episode' in info.keys():
@@ -252,7 +250,7 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,envs.observation_space.shape, envs.action_space)
     obs = envs.reset()
-    rollouts.obs[0].copy_(obs/255.0)
+    rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=100)
@@ -287,7 +285,7 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
 
             # Obser reward and next obs
             new_obs, reward, done, infos = envs.step(action)
-            new_obs = new_obs/255.0
+            new_obs = new_obs
 
             # One-hot encode the action
             # print(action)

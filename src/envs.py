@@ -34,6 +34,14 @@ except ImportError:
 
 UNIFIED_ACTIONS = ['NOOP', 'FIRE', 'RIGHT', 'LEFT']
 
+class NormalizeObservations(gym.ObservationWrapper):
+    def __init__(self, env):
+        super(NormalizeObservations, self).__init__(env)
+
+    def observation(self, observation):
+        return observation / 255.0
+    
+
 def environment_mapping_action(env):
     
     if "Pong" in env.spec.id:
@@ -110,13 +118,14 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
         
         env = Monitor(env,os.path.join(log_dir, str(rank)), allow_early_resets=allow_early_resets)
             
-        if len(env.observation_space.shape) == 3:
-            env = EpisodicLifeEnv(env)
-            if "FIRE" in env.unwrapped.get_action_meanings():
-                env = FireResetEnv(env)
-            env = WarpFrame(env, width=84, height=84)
-            env = ClipRewardEnv(env)
-            env = environment_mapping_action(env)
+        # if len(env.observation_space.shape) == 3:
+        env = EpisodicLifeEnv(env)
+        if "FIRE" in env.unwrapped.get_action_meanings():
+            env = FireResetEnv(env)
+        env = WarpFrame(env, width=84, height=84)
+        env = ClipRewardEnv(env)
+        env = environment_mapping_action(env)
+        env = NormalizeObservations(env)
 
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
