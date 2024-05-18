@@ -1,5 +1,0 @@
-torch==1.11.0
-gym[atari,accept-rom-license]
-autorom[accept-rom-license]
-wandb==0.15.3
-opencv-python

@@ -36,15 +36,16 @@ class BigPolicy(nn.Module):
             pass
 
     def update_model(self, policy):
-        self.policy_a = deepcopy(policy)
+        self.policy_a.load_dict_state(policy.state_dict())
 
     def forward(self, inputs, action=None):
+        # use policy_a to get the lateral connections
         a1, a2, _, a3 = self.policy_a(inputs)
 
         # use adaptor, after seeing one experience/task from inputs of the policy_b
         if self.use_lateral_connection:
             x1, x2, x3 = self.adaptor(a1, a2, a3)
-            b1 = self.policy_b.base.main[:2](inputs/255.0)
+            b1 = self.policy_b.base.main[:2](inputs)
             b1 = b1 + x1
 
             b2 = self.policy_b.base.main[2:4](b1)
@@ -272,7 +273,7 @@ class CNNBase(NNBase):
         self.train()
 
     def forward(self, inputs):
-        x1 = self.main[:2](inputs / 255.0)
+        x1 = self.main[:2](inputs)
         x2 = self.main[2:4](x1)
         x3 = self.main[4:](x2)
 

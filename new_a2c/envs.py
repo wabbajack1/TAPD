@@ -1,19 +1,19 @@
 import os
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 from gym.spaces.box import Box
 from gym.wrappers.clip_action import ClipAction
-from new_a2c.stable_baselines3.common.atari_wrappers import (ClipRewardEnv,
+from stable_baselines3.common.atari_wrappers import (ClipRewardEnv,
                                                      EpisodicLifeEnv,
                                                      FireResetEnv,
                                                      MaxAndSkipEnv,
                                                      NoopResetEnv, WarpFrame)
-from new_a2c.stable_baselines3.common.monitor import Monitor
-from new_a2c.stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
                                               VecEnvWrapper)
-from new_a2c.stable_baselines3.common.vec_env.vec_normalize import \
+from stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
 try:
@@ -106,7 +106,9 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
             # if args is not None:
             #     env = gym.wrappers.RecordVideo(env, os.path.join(args.save_dir, args.algo), episode_trigger = lambda x: (x+1) % 2 == 0)
             #     print(env)
-            env = Monitor(env,os.path.join(log_dir, str(rank)), allow_early_resets=allow_early_resets)
+            ...
+        
+        env = Monitor(env,os.path.join(log_dir, str(rank)), allow_early_resets=allow_early_resets)
             
         if len(env.observation_space.shape) == 3:
             env = EpisodicLifeEnv(env)
@@ -151,9 +153,14 @@ def make_vec_envs(env_name,
             envs = VecNormalize(envs, norm_reward=False)
         else:
             envs = VecNormalize(envs, gamma=gamma)
+    
+    # envs = VecNormalize(envs, norm_obs=True, norm_reward=False)
+
+    print("Normalized reward")
 
     envs = VecPyTorch(envs, device)
 
+    print("Stack frame:", num_frame_stack, envs.observation_space.shape)
     if num_frame_stack is not None:
         envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
     elif len(envs.observation_space.shape) == 3:
@@ -166,7 +173,7 @@ def make_vec_envs(env_name,
 # Checks whether done was caused my timit limits or not
 class TimeLimitMask(gym.Wrapper):
     def step(self, action):
-        obs, rew, done, info = self.env.step(action)
+        obs, rew, done, _, info = self.env.step(action)
         if done and self.env._max_episode_steps == self.env._elapsed_steps:
             info['bad_transition'] = True
 
@@ -210,6 +217,9 @@ class TransposeImage(TransposeObs):
             dtype=self.observation_space.dtype)
 
     def observation(self, ob):
+        if isinstance(ob, tuple):
+            ob, _ = ob
+
         return ob.transpose(self.op[0], self.op[1], self.op[2])
 
 
@@ -297,10 +307,9 @@ class VecPyTorchFrameStack(VecEnvWrapper):
 
     def reset(self):
         obs = self.venv.reset()
-        # print(obs.shape)
         # obs = torch.unsqueeze(obs, 1)
         # print(obs.shape)
-        obs = obs.permute(1, 0, 2, 3)
+        # obs = obs.permute(1, 0, 2, 3)
         # print(obs.shape)
         if torch.backends.cudnn.deterministic:
             self.stacked_obs = torch.zeros(self.stacked_obs.shape)

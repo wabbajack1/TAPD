@@ -59,7 +59,7 @@ def get_args():
     parser.add_argument(
         '--num-processes',
         type=int,
-        default=4,
+        default=10,
         help='how many training CPU processes to use (default: 16)')
     parser.add_argument(
         '--num-steps',
@@ -99,7 +99,7 @@ def get_args():
     parser.add_argument(
         '--num-env-steps-agnostic',
         type=int,
-        default=100_000,
+        default=300_000,
         help='number of environment steps to train after sampling randomly.')
     parser.add_argument(
         '--env-name',
@@ -114,10 +114,10 @@ def get_args():
         default='./trained_models/',
         help='directory to save agent logs (default: ./trained_models/)')
     parser.add_argument(
-        '--no-cuda',
+        '--mps',
         action='store_true',
         default=False,
-        help='disables CUDA training')
+        help='enable mps training')
     parser.add_argument(
         '--use-proper-time-limits',
         action='store_true',
@@ -168,9 +168,15 @@ def get_args():
         type=bool,
         default=False,
         help='Enable agnostic phase')
+    parser.add_argument(
+        '--log_wandb',
+        type=bool,
+        default=False,
+        help='Enable logging to wandb')
+    
     args = parser.parse_args()
 
-    args.cuda = not args.no_cuda and torch.backends.mps.is_available() # here mps backend
+    args.mps = args.mps and torch.backends.mps.is_available() # here mps backend
 
     assert args.algo in ['a2c', 'ppo', 'acktr']
     if args.recurrent_policy:
