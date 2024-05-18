@@ -1,5 +1,5 @@
 import argparse
-
+import yaml
 import torch
 
 
@@ -181,13 +181,22 @@ def get_args():
         default=5,
         help="Number of samples in agnostic phase")
     
+    parser.add_argument(
+        '--config', type=str, help="Path to configuration YAML file", default=None
+    )
+    
     args = parser.parse_args()
 
     args.mps = args.mps and torch.backends.mps.is_available() # here mps backend
 
-    assert args.algo in ['a2c', 'ppo', 'acktr']
-    if args.recurrent_policy:
-        assert args.algo in ['a2c', 'ppo'], \
-            'Recurrent policy is not implemented for ACKTR'
+    # Load YAML config if provided
+    if args.config:
+        with open(args.config, 'r') as file:
+            config = yaml.safe_load(file)
+
+        # Overwrite default args with YAML config
+        for key, value in config.items():
+            if hasattr(args, key):
+                setattr(args, key, value)
 
     return args

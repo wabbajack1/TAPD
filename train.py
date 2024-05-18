@@ -119,7 +119,7 @@ def main():
     
     agnostic_flag = args.agnostic_phase
     samples_nmb = args.agn_samples # generate x samples from the distribution (visiting rooms)
-    
+
     big_policy.train()
     for vis in range(args.visits):
         # start agnostic phase before pandc
@@ -224,9 +224,9 @@ def main():
                 evaluate(args, actor_critic_kb, eval_env_name, args.seed, args.num_processes, eval_log_dir, device)
 
             # update the model, to not include into the comp hist in the compress phase
-            print("Before update:", big_policy.policy_a.state_dict())
+            # print("Before update:", big_policy.policy_a.state_dict())
             big_policy.update_model(actor_critic_kb)
-            print("After update:", big_policy.policy_a.state_dict())
+            # print("After update:", big_policy.policy_a.state_dict())
 
             # use lateral connection after training min of one task, i.e. right after the above code
             big_policy.use_lateral_connection = True

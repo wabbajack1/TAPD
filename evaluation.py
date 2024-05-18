@@ -9,7 +9,7 @@ total_num_steps_evaluation = {}
 eval_episode_rewards_global = {}
 episodes_global = {}
 
-def evaluate(args, actor_critic, obs_rms, env_name, seed, num_processes, eval_log_dir, device):
+def evaluate(args, actor_critic, env_name, seed, num_processes, eval_log_dir, device):
     eval_envs = make_vec_envs(env_name, seed + num_processes, num_processes,
                               None, eval_log_dir, device, True)
     
@@ -18,12 +18,13 @@ def evaluate(args, actor_critic, obs_rms, env_name, seed, num_processes, eval_lo
     global episodes_global
     episodes_global.setdefault(env_name, 0)
 
-    vec_norm = utils.get_vec_normalize(eval_envs)
-    if vec_norm is not None:
-        vec_norm.eval()
-        vec_norm.obs_rms = obs_rms
+    # vec_norm = utils.get_vec_normalize(eval_envs)
+    # if vec_norm is not None:
+    #     vec_norm.eval()
+    #     vec_norm.obs_rms = obs_rms
     eval_episode_rewards = []
     obs = eval_envs.reset()
+    obs = obs / 255
 
     num_updates = int(args.eval_steps) // args.num_processes
 
@@ -33,6 +34,7 @@ def evaluate(args, actor_critic, obs_rms, env_name, seed, num_processes, eval_lo
 
         # Obser reward and next obs
         obs, _, done, infos = eval_envs.step(action)
+        obs = obs / 255
 
         # log
         total_num_steps_evaluation.setdefault(env_name, 0)

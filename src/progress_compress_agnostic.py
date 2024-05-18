@@ -21,6 +21,12 @@ import wandb
 from src.utils import freeze_everything, unfreeze_everything
 from datetime import datetime
 
+# total timesteps across all visits
+total_num_steps_progess = {}
+total_num_steps_compress = {}
+total_num_steps_agnostic = {}
+
+
 def progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name, vis):
     """The progress phase, where the active learning is perfomed.
 
