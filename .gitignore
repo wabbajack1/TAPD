@@ -1,5 +1,6 @@
 .vscode/
 .ipynb_checkpoints/
+.DS_Stores
 bin
 include
 lib
@@ -35,3 +36,4 @@ experiment_log_data
 wandb
 environment.yml
 trained_models
+__pycache__
