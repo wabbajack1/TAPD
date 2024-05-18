@@ -26,3 +26,12 @@ src/checkpoints
 wandb
 video
 dummy_code
+checkpoints
+test_code
+drawio
+notes
+plot
+experiment_log_data
+wandb
+environment.yml
+trained_models
