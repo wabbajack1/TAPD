@@ -36,7 +36,7 @@ class BigPolicy(nn.Module):
             pass
 
     def update_model(self, policy):
-        self.policy_a.load_dict_state(policy.state_dict())
+        self.policy_a.load_state_dict(policy.state_dict())
 
     def forward(self, inputs, action=None):
         # use policy_a to get the lateral connections

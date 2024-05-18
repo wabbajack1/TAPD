@@ -6,7 +6,7 @@ import torch
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument(
-        '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
+        '--algo', default='a2c', help='algorithm to use: a2c')
     parser.add_argument(
         '--lr', type=float, default=7e-4, help='learning rate (default: 7e-4)')
     parser.add_argument(
@@ -168,11 +168,18 @@ def get_args():
         type=bool,
         default=False,
         help='Enable agnostic phase')
+    
     parser.add_argument(
         '--log_wandb',
         type=bool,
         default=False,
         help='Enable logging to wandb')
+    
+    parser.add_argument(
+        "--agn_samples",
+        type=int,
+        default=5,
+        help="Number of samples in agnostic phase")
     
     args = parser.parse_args()
 

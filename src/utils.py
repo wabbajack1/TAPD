@@ -118,3 +118,28 @@ def get_layers_and_params(model: Module, prefix='') -> List[LayerAndParameter]:
         result += get_layers_and_params(layer, prefix=layer_complete_name)
 
     return result
+
+def generate_normalized_tasks(samples_nmb=100, x_range=(0, 8)):
+    # Define smooth step functions using sigmoid
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-x))
+
+    def task1(x):
+        return sigmoid(10 * (x - 1)) - sigmoid(10 * (x - 4))
+
+    def task2(x):
+        return sigmoid(10 * (x - 4)) - sigmoid(10 * (x - 8))
+
+    # Generate data for the plot
+    x = np.linspace(x_range[0], x_range[1], samples_nmb)
+    y1 = task1(x)
+    y2 = task2(x)
+    # y3 = task3(x)
+
+    # Normalize the tasks to make their sum equal to 1 at each point
+    sum_tasks = y1 + y2 
+    y1_normalized = y1 / sum_tasks
+    y2_normalized = y2 / sum_tasks
+
+    return y1_normalized, y2_normalized
+

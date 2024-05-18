@@ -6,13 +6,15 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 import torch.utils.data
+from src.storage import RolloutStorage
+from collections import deque
 
 def variable(t: torch.Tensor, use_cuda=True, **kwargs):
     if torch.backends.mps.is_available() and use_cuda:
         t = t.to("mps:0")
     return Variable(t, **kwargs)
 
-class A2C_ACKTR():
+class A2C():
     def __init__(self,
                  big_policy,
                  actor_critic,
@@ -283,3 +285,53 @@ class EWConline(object):
         for n, p in deepcopy(self.params).items():
             self.mean_params[n] = variable(p.data.detach().clone())
         print(f"Calculation of the task for the importance of each parameter: {self.env_name}")
+
+
+def gather_fisher_samples(current_policy, ewc, args, envs, device):
+    """_summary_
+
+    Args:
+        current_policy (_type_): The current policy to calculate the estimates of the fisher (here always the kb network!)
+        ewc (_type_): The ewc object to calculate the ewc fisher (here like update)
+        active_agent (_type_): _description_
+        args (_type_): _description_
+        envs (_type_): _description_
+        device (_type_): _description_
+        env_name (_type_): _description_
+    """
+    rollouts = RolloutStorage(args.batch_size_fisher, args.num_processes, envs.observation_space.shape, envs.action_space)
+    obs = envs.reset()
+    rollouts.obs[0].copy_(obs/255.0)
+    rollouts.to(device)
+    episode_rewards = deque(maxlen=100)
+
+    for _ in range(args.steps_calucate_fisher):
+        # nmb of steps (rollouts) before update
+        for step in range(args.batch_size_fisher):
+            # Sample actions
+            with torch.no_grad():
+                value, action, action_log_prob = current_policy.act(rollouts.obs[step])
+
+            # Obser reward and next obs
+            obs, reward, done, infos = envs.step(action)
+            obs = obs/255.0
+
+            for info in infos:
+                if 'episode' in info.keys():
+                    episode_rewards.append(info['episode']['r'])
+
+            # If done then clean the history of observations.
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+            bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in info.keys() else [1.0] for info in infos])
+            rollouts.insert(obs, action, action_log_prob, value, reward, masks, bad_masks)
+        
+
+        with torch.no_grad():
+            next_value = current_policy.get_value(rollouts.obs[-1]).detach()
+
+        rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.gae_lambda, args.use_proper_time_limits)
+
+        # gradient update
+        ewc.calculate_fisher(rollouts)
+        rollouts.after_update()
+    ewc.old_fisher = ewc.get_fisher()
