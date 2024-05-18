@@ -21,7 +21,7 @@ import wandb
 from src.utils import freeze_everything, unfreeze_everything
 from datetime import datetime
 from src.algo import gather_fisher_samples
-
+import yaml
 
 import multiprocessing, logging
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -35,6 +35,13 @@ total_num_steps_compress = {}
 total_num_steps_agnostic = {}
 environements = []
 
+
+def load_config(config_file):
+    with open(config_file, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
+
+
 def main():
     global environements
     args = get_args()
@@ -43,6 +50,7 @@ def main():
         # set the wandb project where this run will be logged
         project="Progress and Compress - Prediction",
         entity="agnostic",
+        config=args,
         mode="online" if args.log_wandb else "disabled",
     )
 
