@@ -4,8 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
-from new_a2c.distributions import Bernoulli, Categorical, DiagGaussian
-from new_a2c.utils import init, custom_init
+from src.distributions import Bernoulli, Categorical, DiagGaussian
+from src.utils import init, custom_init
 from copy import deepcopy
 
 class Flatten(nn.Module):

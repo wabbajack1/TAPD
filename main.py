@@ -11,15 +11,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from new_a2c import algo, utils
-from new_a2c.algo import gail
-from new_a2c.arguments import get_args
-from new_a2c.envs import make_vec_envs
-from new_a2c.model import Policy, BigPolicy, Adaptor, IntrinsicCuriosityModule
-from new_a2c.storage import RolloutStorage
+from src import algo, utils
+from src.algo import gail
+from src.arguments import get_args
+from src.envs import make_vec_envs
+from src.model import Policy, BigPolicy, Adaptor, IntrinsicCuriosityModule
+from src.storage import RolloutStorage
 from evaluation import evaluate
 import wandb
-from new_a2c.utils import freeze_everything, unfreeze_everything
+from src.utils import freeze_everything, unfreeze_everything
 from datetime import datetime
 
 import matplotlib.pyplot as plt

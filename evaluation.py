@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 
-from new_a2c import utils
-from new_a2c.envs import make_vec_envs
+from src import utils
+from src.envs import make_vec_envs
 import wandb
 
 total_num_steps_evaluation = {}

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.utils.data
 from torch import autograd
 
-from new_a2c.stable_baselines3.common.running_mean_std import RunningMeanStd
+from src.stable_baselines3.common.running_mean_std import RunningMeanStd
 
 class Discriminator(nn.Module):
     def __init__(self, input_dim, hidden_dim, device):

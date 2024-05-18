@@ -4,7 +4,7 @@ import os
 import torch
 import torch.nn as nn
 
-from new_a2c.envs import VecNormalize
+from src.envs import VecNormalize
 from torch.nn import Module
 from typing import NamedTuple, List
 from torch import Tensor
