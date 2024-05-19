@@ -30,9 +30,9 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 # logger.setLevel(multiprocessing.SUBDEBUG)
 
 # total timesteps across all visits
-total_num_steps_progess = {}
-total_num_steps_compress = {}
-total_num_steps_agnostic = {}
+# total_num_steps_progess = {}
+# total_num_steps_compress = {}
+# total_num_steps_agnostic = {}
 environements = []
 
 

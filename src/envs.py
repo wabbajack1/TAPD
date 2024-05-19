@@ -91,6 +91,17 @@ class UnifiedActionWrapper(gym.Wrapper):
         return self.env.step(self.action_map[np.array(action).item()])
     
 
+class ScaledFloatFrame(gym.ObservationWrapper):
+    def __init__(self, env):
+        gym.ObservationWrapper.__init__(self, env)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=env.observation_space.shape, dtype=np.float32)
+
+    def observation(self, observation):
+        # careful! This undoes the memory optimization, use
+        # with smaller replay buffers only.
+        return np.array(observation).astype(np.float32) / 255.0
+    
+
 def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
     def _thunk():
         if env_id.startswith("dm"):
@@ -125,7 +136,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
         env = WarpFrame(env, width=84, height=84)
         env = ClipRewardEnv(env)
         env = environment_mapping_action(env)
-        env = NormalizeObservations(env)
+        env = ScaledFloatFrame(env)
 
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
@@ -159,9 +170,9 @@ def make_vec_envs(env_name,
 
     if len(envs.observation_space.shape) == 1:
         if gamma is None:
-            envs = VecNormalize(envs, norm_reward=False)
+            envs = VecNormalize(envs, norm_reward=False, norm_obs=True)
         else:
-            envs = VecNormalize(envs, gamma=gamma)
+            envs = VecNormalize(envs, gamma=gamma, norm_obs=True)
     
     # envs = VecNormalize(envs, norm_obs=True, norm_reward=False)
 

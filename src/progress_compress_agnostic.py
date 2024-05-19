@@ -68,8 +68,7 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-
-            # print(action.shape, rollouts.obs[step].shape, obs.shape)
+            print(obs)
 
             for info in infos:
                 if 'episode' in info.keys():
@@ -285,7 +284,6 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
 
             # Obser reward and next obs
             new_obs, reward, done, infos = envs.step(action)
-            new_obs = new_obs
 
             # One-hot encode the action
             # print(action)
