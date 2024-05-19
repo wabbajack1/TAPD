@@ -55,8 +55,7 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
             utils.update_linear_schedule(
-                active_agent.optimizer, steps, num_updates,
-                active_agent.optimizer.lr if args.algo == "acktr" else args.lr)
+                active_agent.optimizer, steps, num_updates, args.lr)
             
             
         # nmb of steps (rollouts) before update
@@ -68,8 +67,7 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-            print(obs)
-
+            
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
@@ -271,7 +269,7 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
             # decrease learning rate linearly
             utils.update_linear_schedule(
                 active_agent.optimizer, steps, num_updates,
-                active_agent.optimizer.lr if args.algo == "acktr" else args.lr)
+          args.lr)
             
         # nmb of steps (rollouts) before update
         fwd_losses = []
