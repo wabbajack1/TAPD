@@ -60,13 +60,13 @@ class Categorical(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(Categorical, self).__init__()
 
-        init_ = lambda m: init(
-            m,
-            nn.init.orthogonal_,
-            lambda x: nn.init.constant_(x, 0),
-            gain=0.01)
+        def init_kaiming(m):
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.constant_(m.bias, 0)
+            return m
 
-        self.linear = init_(nn.Linear(num_inputs, num_outputs))
+        self.linear = init_kaiming(nn.Linear(num_inputs, num_outputs))
 
     def forward(self, x):
         x = self.linear(x)

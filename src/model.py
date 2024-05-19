@@ -5,7 +5,8 @@ import torch.nn.functional as F
 import wandb
 
 from src.distributions import Bernoulli, Categorical, DiagGaussian
-from src.utils import init, custom_init
+from src.utils import init_, custom_init
+import torch.nn.init as init
 from copy import deepcopy
 
 class Flatten(nn.Module):
@@ -256,19 +257,20 @@ class CNNBase(NNBase):
     def __init__(self, num_inputs, hidden_size=256):
         super(CNNBase, self).__init__(hidden_size, hidden_size)
 
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('relu'))
+        def init_kaiming(m):
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            return m
 
         self.main = nn.Sequential(
-            init_(nn.Conv2d(num_inputs, 16, 8, stride=4)), nn.ReLU(),
-            init_(nn.Conv2d(16, 32, 4, stride=2)), nn.ReLU(), Flatten(),
-            init_(nn.Linear(32 * 9 * 9, hidden_size)), nn.ReLU()
+            init_kaiming(nn.Conv2d(num_inputs, 16, 8, stride=4)), nn.ReLU(),
+            init_kaiming(nn.Conv2d(16, 32, 4, stride=2)), nn.ReLU(), Flatten(),
+            init_kaiming(nn.Linear(32 * 9 * 9, hidden_size)), nn.ReLU()
         )
 
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0))
-
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+        self.critic_linear = init_kaiming(nn.Linear(hidden_size, 1))
 
         self.train()
 
@@ -326,26 +328,24 @@ class SingleLayerMLP(nn.Module):
         return x
     
 class Adaptor(nn.Module):
-
-
-    """_summary_ new
-
-    Args:
-        nn (_type_): _description_
-    """
     def __init__(self, hidden_size=256):
         super(Adaptor, self).__init__()
 
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain('relu'))
+        def init_kaiming(m):
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            return m
         
-        self.conv1_adaptor = init_(nn.Conv2d(16, 16, kernel_size=1))
-        self.conv2_adaptor = init_(nn.Conv2d(32, 32, kernel_size=1))
+        self.conv1_adaptor = init_kaiming(nn.Conv2d(16, 16, kernel_size=1))
+        self.conv2_adaptor = init_kaiming(nn.Conv2d(32, 32, kernel_size=1))
         
         self.single_layer_mlp = nn.Sequential(
             Flatten(),
-            init_(nn.Linear(hidden_size, hidden_size)),
+            init_kaiming(nn.Linear(hidden_size, hidden_size)),
             nn.ReLU(),
-            init_(nn.Linear(hidden_size, hidden_size)),
+            init_kaiming(nn.Linear(hidden_size, hidden_size)),
             nn.ReLU(),
         )
 

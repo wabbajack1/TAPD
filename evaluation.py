@@ -18,10 +18,6 @@ def evaluate(args, actor_critic, env_name, seed, num_processes, eval_log_dir, de
     global episodes_global
     episodes_global.setdefault(env_name, 0)
 
-    # vec_norm = utils.get_vec_normalize(eval_envs)
-    # if vec_norm is not None:
-    #     vec_norm.eval()
-    #     vec_norm.obs_rms = obs_rms
     eval_episode_rewards = []
     obs = eval_envs.reset()
     obs = obs 

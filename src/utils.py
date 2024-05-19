@@ -8,7 +8,7 @@ from src.envs import VecNormalize
 from torch.nn import Module
 from typing import NamedTuple, List
 from torch import Tensor
-
+import torch.nn.init as init
 
 class LayerAndParameter(NamedTuple):
     layer_name: str
@@ -56,9 +56,11 @@ def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
     lr = initial_lr - (initial_lr * (epoch / float(total_num_epochs)))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+        if epoch % 10 == 0:
+            print("Learning rate: ", param_group['lr'])
 
 
-def init(module, weight_init, bias_init, gain=1):
+def init_(module, weight_init, bias_init, gain=1):
     print(module)
 
     original_device = module.weight.device
@@ -74,7 +76,9 @@ def init(module, weight_init, bias_init, gain=1):
 
 def custom_init(m):
     if isinstance(m, (nn.Conv2d, nn.Linear)):
-        init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain('relu'))
+        init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
 
 
 def cleanup_log_dir(log_dir):
