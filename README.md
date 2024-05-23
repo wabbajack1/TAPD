@@ -10,7 +10,7 @@ To install the required packages, run the following command:
 ```bash
 pip install -r requirements.txt
 ```
-Make sure Python 3.8 or higher is installed on your system and that you use a virtual environment of youre choice.
+Make sure Python 3.8 or higher is installed on your system and that you use a virtual environment of your choice.
 
 When running the code, make sure to use the following command:
 ```bash

@@ -16,21 +16,6 @@ from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
 from stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
-try:
-    import dmc2gym
-except ImportError:
-    pass
-
-try:
-    import roboschool
-except ImportError:
-    pass
-
-try:
-    import pybullet_envs
-except ImportError:
-    pass
-
 
 UNIFIED_ACTIONS = ['NOOP', 'FIRE', 'RIGHT', 'LEFT']
 

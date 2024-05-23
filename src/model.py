@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import wandb
 
 from src.distributions import Bernoulli, Categorical, DiagGaussian
-from src.utils import init_, custom_init
+from src.utils import init_, custom_init_oto
 import torch.nn.init as init
 from copy import deepcopy
 
@@ -161,11 +161,8 @@ class Policy(nn.Module):
     
     def reset_weights(self):
         print("\nRESETTING WEIGHTS")
-        self.apply(custom_init)
-        # for name, m in self.named_modules():
-        #     if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        #         m.reset_parameters()
-        #         print(f"Name of Tensor {name}: {m}")
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain("relu"))
+        self.apply(init_)
 
 class NNBase(nn.Module):
     def __init__(self, recurrent_input_size, hidden_size):
@@ -257,20 +254,16 @@ class CNNBase(NNBase):
     def __init__(self, num_inputs, hidden_size=256):
         super(CNNBase, self).__init__(hidden_size, hidden_size)
 
-        def init_kaiming(m):
-            if isinstance(m, (nn.Conv2d, nn.Linear)):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            return m
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
 
         self.main = nn.Sequential(
-            init_kaiming(nn.Conv2d(num_inputs, 16, 8, stride=4)), nn.ReLU(),
-            init_kaiming(nn.Conv2d(16, 32, 4, stride=2)), nn.ReLU(), Flatten(),
-            init_kaiming(nn.Linear(32 * 9 * 9, hidden_size)), nn.ReLU()
+            init_(nn.Conv2d(num_inputs, 16, 8, stride=4)), nn.ReLU(),
+            init_(nn.Conv2d(16, 32, 4, stride=2)), nn.ReLU(), Flatten(),
+            init_(nn.Linear(32 * 9 * 9, hidden_size)), nn.ReLU()
         )
 
-        self.critic_linear = init_kaiming(nn.Linear(hidden_size, 1))
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
 
@@ -330,22 +323,18 @@ class SingleLayerMLP(nn.Module):
 class Adaptor(nn.Module):
     def __init__(self, hidden_size=256):
         super(Adaptor, self).__init__()
-
-        def init_kaiming(m):
-            if isinstance(m, (nn.Conv2d, nn.Linear)):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            return m
         
-        self.conv1_adaptor = init_kaiming(nn.Conv2d(16, 16, kernel_size=1))
-        self.conv2_adaptor = init_kaiming(nn.Conv2d(32, 32, kernel_size=1))
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
+        
+        self.conv1_adaptor = init_(nn.Conv2d(16, 16, kernel_size=1))
+        self.conv2_adaptor = init_(nn.Conv2d(32, 32, kernel_size=1))
         
         self.single_layer_mlp = nn.Sequential(
             Flatten(),
-            init_kaiming(nn.Linear(hidden_size, hidden_size)),
+            init_(nn.Linear(hidden_size, hidden_size)),
             nn.ReLU(),
-            init_kaiming(nn.Linear(hidden_size, hidden_size)),
+            init_(nn.Linear(hidden_size, hidden_size)),
             nn.ReLU(),
         )
 
@@ -360,11 +349,8 @@ class Adaptor(nn.Module):
     
     def reset_weights(self):
         print("\nRESETTING WEIGHTS")
-        self.apply(custom_init)
-        # for name, m in self.named_modules():
-        #     if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        #         m.reset_parameters()
-        #         print(f"Name of Tensor {name}: {m}")
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain("relu"))
+        self.apply(init_)
 
 class IntrinsicCuriosityModule(nn.Module):
     def __init__(self, obs_shape, num_actions):

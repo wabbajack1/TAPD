@@ -80,6 +80,12 @@ def custom_init(m):
         if m.bias is not None:
             nn.init.constant_(m.bias, 0)
 
+def custom_init_oto(m):
+    if isinstance(m, (nn.Conv2d, nn.Linear)):
+        init.orthogonal_(m.weight)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+
 
 def cleanup_log_dir(log_dir):
     try:
