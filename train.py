@@ -48,8 +48,8 @@ def main():
 
     wandb.init(
         # set the wandb project where this run will be logged
-        project="Progress and Compress - Prediction",
-        entity="agnostic",
+        project="...",
+        entity="...",
         config=args,
         mode="online" if args.log_wandb else "disabled",
     )
