@@ -17,23 +17,13 @@ def get_args():
     parser.add_argument(
         '--alpha',
         type=float,
-        default=0.99,
+        default=0.95,
         help='RMSprop optimizer apha (default: 0.99)')
     parser.add_argument(
         '--gamma',
         type=float,
         default=0.99,
         help='discount factor for rewards (default: 0.99)')
-    parser.add_argument(
-        '--use-gae',
-        action='store_true',
-        default=False,
-        help='use generalized advantage estimation')
-    parser.add_argument(
-        '--gae-lambda',
-        type=float,
-        default=0.95,
-        help='gae lambda parameter (default: 0.95)')
     parser.add_argument(
         '--entropy-coef',
         type=float,
@@ -124,11 +114,6 @@ def get_args():
         default=False,
         help='compute returns taking into account time limits')
     parser.add_argument(
-        '--recurrent-policy',
-        action='store_true',
-        default=False,
-        help='use a recurrent policy')
-    parser.add_argument(
         '--use-linear-lr-decay',
         action='store_true',
         default=False,
@@ -168,19 +153,16 @@ def get_args():
         type=bool,
         default=False,
         help='Enable agnostic phase')
-    
     parser.add_argument(
         '--log_wandb',
         type=bool,
         default=False,
         help='Enable logging to wandb')
-    
     parser.add_argument(
         "--agn_samples",
         type=int,
         default=5,
         help="Number of samples in agnostic phase")
-    
     parser.add_argument(
         '--config', type=str, help="Path to configuration YAML file", default=None
     )
