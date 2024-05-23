@@ -25,6 +25,16 @@ def get_args():
         default=0.99,
         help='discount factor for rewards (default: 0.99)')
     parser.add_argument(
+        '--use-gae',
+        action='store_true',
+        default=False,
+        help='use generalized advantage estimation')
+    parser.add_argument(
+        '--gae-lambda',
+        type=float,
+        default=0.95,
+        help='gae lambda parameter (default: 0.95)')
+    parser.add_argument(
         '--entropy-coef',
         type=float,
         default=0.001,
@@ -153,16 +163,19 @@ def get_args():
         type=bool,
         default=False,
         help='Enable agnostic phase')
+    
     parser.add_argument(
         '--log_wandb',
         type=bool,
         default=False,
         help='Enable logging to wandb')
+    
     parser.add_argument(
         "--agn_samples",
         type=int,
         default=5,
         help="Number of samples in agnostic phase")
+    
     parser.add_argument(
         '--config', type=str, help="Path to configuration YAML file", default=None
     )
