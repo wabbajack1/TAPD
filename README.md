@@ -17,3 +17,5 @@ When running the code, make sure to use the following command:
 python train.py --config config/progress_and_compress.yml
 ```
 Here within the config folder, you can define various configuration files for different experiments.
+
+Additionally the implementation of the baseline might be the first in pytorch: https://arxiv.org/abs/1805.06370.
