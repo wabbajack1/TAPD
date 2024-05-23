@@ -3,26 +3,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
-# from utils import init
+from utils import init
 from src.distributions import Bernoulli, Categorical, DiagGaussian
 from copy import deepcopy
 
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
-
-# Define the initialization function
-def init(m, init_fn, bias_fn, gain_fn):
-    if isinstance(m, (nn.Conv2d, nn.Linear)):
-        device = m.weight.device  # Save the current device of the model's weights
-        m.weight.data = m.weight.data.to('cpu')  # Move weights to CPU
-        init_fn(m.weight.data, gain=gain_fn)
-        m.weight.data = m.weight.data.to(device)  # Move weights back to the original device
-        if m.bias is not None:
-            m.bias.data = m.bias.data.to('cpu')  # Move bias to CPU
-            bias_fn(m.bias.data)
-            m.bias.data = m.bias.data.to(device)  # Move bias back to the original device
-    return m
 
 class BigPolicy(nn.Module):
     """The BigPolicy takes in two seperate policies, to combine them into one

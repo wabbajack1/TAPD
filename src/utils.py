@@ -60,29 +60,36 @@ def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
             print("Learning rate: ", param_group['lr'])
 
 
-def init_(module, weight_init, bias_init, gain=1):
-    print(module)
+# def init_(module, weight_init, bias_init, gain=1):
+#     print(module)
 
-    original_device = module.weight.device
-    module.weight.data = module.weight.data.to('cpu')
-    module.bias.data = module.bias.data.to('cpu')
+#     original_device = module.weight.device
+#     module.weight.data = module.weight.data.to('cpu')
+#     module.bias.data = module.bias.data.to('cpu')
     
-    weight_init(module.weight.data, gain=gain)
-    bias_init(module.bias.data)
+#     weight_init(module.weight.data, gain=gain)
+#     bias_init(module.bias.data)
 
-    module.weight.data = module.weight.data.to(original_device)
-    module.bias.data = module.bias.data.to(original_device)
-    return module
+#     module.weight.data = module.weight.data.to(original_device)
+#     module.bias.data = module.bias.data.to(original_device)
+#     return module
+            
+# Define the initialization function
+def init(m, init_fn, bias_fn, gain_fn):
+    if isinstance(m, (nn.Conv2d, nn.Linear)):
+        device = m.weight.device  # Save the current device of the model's weights
+        m.weight.data = m.weight.data.to('cpu')  # Move weights to CPU
+        init_fn(m.weight.data, gain=gain_fn)
+        m.weight.data = m.weight.data.to(device)  # Move weights back to the original device
+        if m.bias is not None:
+            m.bias.data = m.bias.data.to('cpu')  # Move bias to CPU
+            bias_fn(m.bias.data)
+            m.bias.data = m.bias.data.to(device)  # Move bias back to the original device
+    return m
 
 def custom_init(m):
     if isinstance(m, (nn.Conv2d, nn.Linear)):
         init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-        if m.bias is not None:
-            nn.init.constant_(m.bias, 0)
-
-def custom_init_oto(m):
-    if isinstance(m, (nn.Conv2d, nn.Linear)):
-        init.orthogonal_(m.weight)
         if m.bias is not None:
             nn.init.constant_(m.bias, 0)
 
