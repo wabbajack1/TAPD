@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
-from utils import init
+from src.utils import init
 from src.distributions import Bernoulli, Categorical, DiagGaussian
 from copy import deepcopy
 

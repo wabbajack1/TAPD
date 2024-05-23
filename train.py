@@ -196,7 +196,6 @@ def main():
             print(20*"#", f"Visit {vis + 1} of {env_name}", 20*"#")
             # init environment
             envs = make_vec_envs(env_name, args.seed, args.num_processes, args.gamma, args.log_dir, device, False)
-            # envs = utils.get_vec_normalize(envs)
 
             # progress phase
             print(5*"#", "Progress phase", 5*"#")
