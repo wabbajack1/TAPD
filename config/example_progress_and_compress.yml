@@ -6,7 +6,6 @@ ewc_start_timestep_after: 100_000
 num_env_steps_compress: 300_000
 num_env_steps_progress: 2_500_000
 num_processes: 8
-seed: 42
 lr: 0.0007
 use_linear_lr_decay: False
 visits: 3
