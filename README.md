@@ -14,7 +14,7 @@ Make sure Python 3.8 or higher is installed on your system and that you use a vi
 
 When running the code, make sure to use the following command:
 ```bash
-python train.py --config config/progress_and_compress.yml
+python train.py --config config/example_progress_and_compress.yml
 ```
 Here within the config folder, you can define various configuration files for different experiments.
 
