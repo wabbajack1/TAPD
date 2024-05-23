@@ -3,15 +3,26 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
-
+# from utils import init
 from src.distributions import Bernoulli, Categorical, DiagGaussian
-from src.utils import init_, custom_init_oto
-import torch.nn.init as init
 from copy import deepcopy
 
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
+
+# Define the initialization function
+def init(m, init_fn, bias_fn, gain_fn):
+    if isinstance(m, (nn.Conv2d, nn.Linear)):
+        device = m.weight.device  # Save the current device of the model's weights
+        m.weight.data = m.weight.data.to('cpu')  # Move weights to CPU
+        init_fn(m.weight.data, gain=gain_fn)
+        m.weight.data = m.weight.data.to(device)  # Move weights back to the original device
+        if m.bias is not None:
+            m.bias.data = m.bias.data.to('cpu')  # Move bias to CPU
+            bias_fn(m.bias.data)
+            m.bias.data = m.bias.data.to(device)  # Move bias back to the original device
+    return m
 
 class BigPolicy(nn.Module):
     """The BigPolicy takes in two seperate policies, to combine them into one
@@ -250,12 +261,14 @@ class NNBase(nn.Module):
 
         return x, hxs
 
+
+
 class CNNBase(NNBase):
     def __init__(self, num_inputs, hidden_size=256):
         super(CNNBase, self).__init__(hidden_size, hidden_size)
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('relu'))
+                               constant_(x, 0), nn.init.calculate_gain("relu"))
 
         self.main = nn.Sequential(
             init_(nn.Conv2d(num_inputs, 16, 8, stride=4)), nn.ReLU(),
@@ -325,7 +338,7 @@ class Adaptor(nn.Module):
         super(Adaptor, self).__init__()
         
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('relu'))
+                               constant_(x, 0), nn.init.calculate_gain("relu"))
         
         self.conv1_adaptor = init_(nn.Conv2d(16, 16, kernel_size=1))
         self.conv2_adaptor = init_(nn.Conv2d(32, 32, kernel_size=1))
@@ -360,7 +373,7 @@ class IntrinsicCuriosityModule(nn.Module):
         num_inputs = obs_shape[0]
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('relu'))
+                               constant_(x, 0), nn.init.calculate_gain("relu"))
         
         # self.conv = nn.Sequential(
         #     nn.Conv2d(num_inputs, 32, 8, stride=4), nn.ELU(),
@@ -382,11 +395,11 @@ class IntrinsicCuriosityModule(nn.Module):
 
         
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('leaky_relu'))
+                               constant_(x, 0), nn.init.calculate_gain("relu"))
         
         self.forward_net = nn.Sequential(
             nn.Linear(self.feature_size + num_actions, 256),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Linear(256, self.feature_size)
         )
 
