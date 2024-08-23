@@ -18,9 +18,9 @@ class A2C():
     def __init__(self,
                  big_policy,
                  actor_critic,
-                 forward_model,
                  value_loss_coef,
                  entropy_coef,
+                 forward_model=None,
                  lr=None,
                  eps=None,
                  alpha=None,
@@ -30,28 +30,92 @@ class A2C():
         self.big_policy = big_policy
         self.actor_critic = actor_critic
         self.acktr = acktr
-
+        self.ewc_loss = torch.tensor(0) # ewc loss only when algo is ewc-online
         self.value_loss_coef = value_loss_coef
         self.entropy_coef = entropy_coef
-
         self.max_grad_norm = max_grad_norm
+        self.forward_model = forward_model
 
-        self.optimizer = optim.RMSprop((list(actor_critic.parameters()) + list(big_policy.adaptor.parameters())), lr, eps=eps, alpha=alpha)
-        self.optimizer_forward = optim.RMSprop(forward_model.parameters(), lr, eps=eps, alpha=alpha)
-        # self.optimizer_forward = optim.RAdam(forward_model.parameters(), 0.001)
+        # self.optimizer = optim.RMSprop((list(actor_critic.parameters()) + list(big_policy.adaptor.parameters())), lr, eps=eps, alpha=alpha)
+        self.optimizer = optim.RMSprop(self.big_policy.parameters(), lr, eps=eps, alpha=alpha)
+        print("Optimized parameters:")
+        for name, param in self.big_policy.named_parameters():
+            if param.requires_grad:
+                print(name)
 
 
-    def update(self, rollouts, fwd_losses=None):
+        
+        if forward_model is not None:
+            self.optimizer_forward = torch.optim.RAdam(self.forward_model.parameters(), lr=lr)
+            self.forward_model.train()
+            #self.optimizer_forward = optim.RMSprop(self.forward_model.parameters(), lr, eps=eps, alpha=alpha)
+
+    def update_ewc(self, rollouts, ewc=None):
+        """Online fisher information.
+
+        Args:
+            rollouts (_type_): data from the current policy
+            ewc (_type_): ewc object with its methods
+
+        Returns:
+            _type_: _description_
+        """
+
         obs_shape = rollouts.obs.size()[2:]
         action_shape = rollouts.actions.size()[-1]
         num_steps, num_processes, _ = rollouts.rewards.size()
-        # print(rollouts.obs[:-1].view(-1, *obs_shape).shape)
-        # print(rollouts.obs[:-1].view(-1, *obs_shape).shape)
 
-        values, action_log_probs, dist_entropy = self.big_policy.evaluate_actions(
+        # evaluate actions
+        values, action_log_probs, dist_entropy, _ = self.big_policy.evaluate_actions(
             rollouts.obs[:-1].view(-1, *obs_shape),
             rollouts.actions.view(-1, action_shape)
         )
+        
+        # reshape values and action_log_probs
+        values = values.view(num_steps, num_processes, 1)
+        action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
+
+        # calculate advantages, here values are the values of the critic (V(s), i.e. the value function/esitmate)
+        advantages = rollouts.returns[:-1] - values
+
+        # calculate action loss and value loss
+        value_loss = advantages.pow(2).mean()
+        action_loss = -(advantages.detach() * action_log_probs).mean()
+
+        # calculate the total loss
+        loss = value_loss * self.value_loss_coef + action_loss - dist_entropy * self.entropy_coef
+        if ewc is not None and ewc.ewc_timestep_counter >= ewc.ewc_start_timestep:
+            self.ewc_loss = ewc.penalty(self.big_policy.policy_b)
+            total_loss = loss + self.ewc_loss
+        else:
+            total_loss = loss
+        
+        self.optimizer.zero_grad()
+        total_loss.backward()
+        
+        nn.utils.clip_grad_norm_(self.big_policy.parameters(),self.max_grad_norm)
+        self.optimizer.step()
+        
+        return total_loss.item(), value_loss.item(), action_loss.item(), dist_entropy.item()
+
+    def update(self, rollouts, fwd_losses=None, task_id=None):
+        self.optimizer.zero_grad()
+
+        obs_shape = rollouts.obs.size()[2:]
+        action_shape = rollouts.actions.size()[-1]
+        num_steps, num_processes, _ = rollouts.rewards.size()
+
+        if task_id is not None:
+            values, action_log_probs, dist_entropy, _ = self.big_policy.evaluate_actions(
+                rollouts.obs[:-1].view(-1, *obs_shape),
+                rollouts.actions.view(-1, action_shape),
+                idx=task_id
+            )
+        else:
+            values, action_log_probs, dist_entropy, _ = self.big_policy.evaluate_actions(
+                rollouts.obs[:-1].view(-1, *obs_shape),
+                rollouts.actions.view(-1, action_shape)
+            )
         
         values = values.view(num_steps, num_processes, 1)
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
@@ -78,26 +142,23 @@ class A2C():
             fisher_loss.backward(retain_graph=True)
             self.optimizer.acc_stats = False
 
-        self.optimizer.zero_grad()
-
-        # print(sum(fwd_losses).sum())
-        # print(value_loss * self.value_loss_coef + action_loss - dist_entropy * self.entropy_coef)
-
         if fwd_losses is not None:
             self.optimizer_forward.zero_grad()
-            ((value_loss * self.value_loss_coef + action_loss - dist_entropy * self.entropy_coef)).backward()
+            total_loss = ((value_loss * self.value_loss_coef + action_loss - dist_entropy * self.entropy_coef))
+            total_loss.backward()
             torch.cat(fwd_losses).mean().backward()
             self.optimizer_forward.step()
         else:
-            (value_loss * self.value_loss_coef + action_loss - dist_entropy * self.entropy_coef).backward()
-    
+            total_loss = (value_loss * self.value_loss_coef + action_loss - dist_entropy * self.entropy_coef)
+            total_loss.backward()
+
 
         if self.acktr == False:
-            nn.utils.clip_grad_norm_(self.actor_critic.parameters(),self.max_grad_norm)
+            nn.utils.clip_grad_norm_(self.big_policy.parameters(),self.max_grad_norm)
 
         self.optimizer.step()
 
-        return value_loss.item(), action_loss.item(), dist_entropy.item()
+        return total_loss.item(), value_loss.item(), action_loss.item(), dist_entropy.item()
 
 class Distillation():
     def __init__(self,
@@ -131,28 +192,29 @@ class Distillation():
         action_shape = rollouts.actions.size()[-1]
         num_steps, num_processes, _ = rollouts.rewards.size()
 
-        _, action_log_probs_teacher, _ = self.actor_critic_teacher.evaluate_actions(
+        # evaluate actions of teacher and student
+        _, action_log_probs_teacher, _, logits_teacher = self.actor_critic_teacher.evaluate_actions(
             rollouts.obs[:-1].view(-1, *obs_shape),
             rollouts.actions.view(-1, action_shape)
         )
 
-        _, action_log_probs_student, _ = self.actor_critic_student.evaluate_actions(
+        _, action_log_probs_student, _, logits_student = self.actor_critic_student.evaluate_actions(
             rollouts.obs[:-1].view(-1, *obs_shape),
             rollouts.actions.view(-1, action_shape)
         )
-
-
-        action_log_probs_teacher = action_log_probs_teacher.view(num_steps, num_processes, 1)
-        action_log_probs_student = action_log_probs_student.view(num_steps, num_processes, 1)
-
-        kl_loss = criterion(action_log_probs_student, action_log_probs_teacher.detach())
-
+        
+        log_probs_student = torch.log_softmax(logits_student, dim=-1)
+        log_probs_teacher = torch.log_softmax(logits_teacher, dim=-1)
+        
+        # calculate the total loss, the teacher is the target, hence the teacher is detached
+        kl_loss = criterion(log_probs_student, log_probs_teacher.detach())
+        
         if ewc is not None and ewc.ewc_timestep_counter >= ewc.ewc_start_timestep:
             self.ewc_loss = ewc.penalty(self.actor_critic_student)
             total_loss = kl_loss + self.ewc_loss
         else:
             total_loss = kl_loss
-
+        
         self.optimizer.zero_grad()
         total_loss.backward()
 
@@ -164,7 +226,7 @@ class Distillation():
         return total_loss.item(), kl_loss.item(), self.ewc_loss.item()
 
 class EWConline(object):
-    def __init__(self, entropy_coef=0.01, ewc_lambda=175, ewc_gamma=0.3, ewc_start_timestep_after=80_000, max_grad_norm=None, steps_calucate_fisher=None):
+    def __init__(self, entropy_coef=0.01, ewc_lambda=175, ewc_gamma=0.3, ewc_start_timestep_after=80_000, max_grad_norm=None, steps_calculate_fisher=None):
         """The online ewc algo. We need current samples from the current policy (in atari domain task == env == data)
         Args:
             task (None): the task (in atari a env) for calculating the importance of task w.r.t the paramters
@@ -185,7 +247,7 @@ class EWConline(object):
         self.old_fisher = None
         self.mean_params = {}
         self.max_grad_norm = max_grad_norm
-        self.steps_calucate_fisher = steps_calucate_fisher
+        self.steps_calculate_fisher = steps_calculate_fisher
         self.exp = 0
 
     def empty_fisher(self):
@@ -199,7 +261,7 @@ class EWConline(object):
         action_shape = rollouts.actions.size()[-1]
         num_steps, num_processes, _ = rollouts.rewards.size()
 
-        values, action_log_probs, dist_entropy = self.model.evaluate_actions(
+        values, action_log_probs, dist_entropy, _ = self.model.evaluate_actions(
             rollouts.obs[:-1].view(-1, *obs_shape),
             rollouts.actions.view(-1, action_shape)
         )
@@ -218,7 +280,7 @@ class EWConline(object):
         # y_t = a * y_t + (1-a)*y_{t-1}
         for name, param in self.model.named_parameters():
             if param.grad is not None and "critic" not in name:
-                self.fisher[name] += param.grad.data.clone().pow(2) / self.steps_calucate_fisher
+                self.fisher[name] += param.grad.data.clone().pow(2) / self.steps_calculate_fisher
     
     def get_fisher(self):
         self.exp += 1 # count tasks
@@ -284,7 +346,7 @@ class EWConline(object):
         self.empty_fisher()
         for n, p in deepcopy(self.params).items():
             self.mean_params[n] = variable(p.data.detach().clone())
-        print(f"Calculation of the task for the importance of each parameter: {self.env_name}")
+        print(f"Calculation of the importance for the task of each parameter: {self.env_name}")
 
 
 def gather_fisher_samples(current_policy, ewc, args, envs, device):
@@ -301,20 +363,19 @@ def gather_fisher_samples(current_policy, ewc, args, envs, device):
     """
     rollouts = RolloutStorage(args.batch_size_fisher, args.num_processes, envs.observation_space.shape, envs.action_space)
     obs = envs.reset()
-    rollouts.obs[0].copy_(obs/255.0)
+    rollouts.obs[0].copy_(obs)
     rollouts.to(device)
     episode_rewards = deque(maxlen=100)
 
-    for _ in range(args.steps_calucate_fisher):
+    for _ in range(args.steps_calculate_fisher):
         # nmb of steps (rollouts) before update
         for step in range(args.batch_size_fisher):
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob = current_policy.act(rollouts.obs[step])
+                value, action, action_log_prob, _ = current_policy.act(rollouts.obs[step])
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-            obs = obs/255.0
 
             for info in infos:
                 if 'episode' in info.keys():

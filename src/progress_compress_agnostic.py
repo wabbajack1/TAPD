@@ -27,7 +27,7 @@ total_num_steps_compress = {}
 total_num_steps_agnostic = {}
 
 
-def progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name, vis):
+def progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name, vis, ewc=None):
     """The progress phase, where the active learning is perfomed.
 
     Args:
@@ -45,7 +45,12 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
+    if ewc is not None:
+        ewc.ewc_timestep_counter = 0
+        ewc.ewc_start_timestep = args.ewc_start_timestep_after
+
     episode_rewards = deque(maxlen=100)
+    episode_rewards.append(0) # for initial logging
 
     start = time.time()
     num_updates = int(args.num_env_steps_progress) // args.num_steps // args.num_processes
@@ -58,12 +63,12 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
                 active_agent.optimizer, steps, num_updates, args.lr)
             
             
-        # nmb of steps (rollouts) before update
+        # nmb of steps (rollouts) before update (i.e. batch size)
         for step in range(args.num_steps):
             
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob = big_policy.act(rollouts.obs[step])
+                value, action, action_log_prob, _ = big_policy.act(rollouts.obs[step])
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
@@ -83,8 +88,13 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.gae_lambda, args.use_proper_time_limits)
 
-        # gradient update
-        value_loss, action_loss, dist_entropy = active_agent.update(rollouts)
+        # loss and gradient update
+        if ewc is not None:
+            ewc.ewc_timestep_counter += args.num_processes * args.num_steps
+            total_loss, value_loss, action_loss, dist_entropy = active_agent.update_ewc(rollouts, ewc=ewc)
+        else:
+            total_loss, value_loss, action_loss, dist_entropy = active_agent.update(rollouts)
+        
         rollouts.after_update()
 
         # save for every interval-th episode or for the last epoch
@@ -104,29 +114,34 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
         # log metrics
         total_num_steps_progess.setdefault(env_name, 0)
         total_num_steps_progess[env_name] += args.num_processes * args.num_steps
-        if steps % args.log_interval == 0 and len(episode_rewards) > 1:
+        if steps % args.log_interval == 0:
             end = time.time()
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
                 .format(steps, total_num_steps_progess[env_name],
                         int(total_num_steps_progess[env_name] / (end - start)),
-                        len(episode_rewards), np.mean(episode_rewards),
-                        np.median(episode_rewards), np.min(episode_rewards),
-                        np.max(episode_rewards), dist_entropy, value_loss,
+                        len(episode_rewards), 
+                        np.mean(episode_rewards),
+                        np.median(episode_rewards), 
+                        np.min(episode_rewards),
+                        np.max(episode_rewards), 
+                        dist_entropy,
+                        value_loss,
                         action_loss))
             wandb.log({f"Progress/Training/Score-{env_name}": np.mean(episode_rewards),
                        f"Progress/Training/value_loss-{env_name}": value_loss,
                        f"Progress/Training/action_loss-{env_name}": action_loss,
                        f"Progress/Training/dist_entropy-{env_name}": dist_entropy,
-                       f"Progress/Training/Timesteps-{env_name}": total_num_steps_progess[env_name]})
+                       f"Progress/Training/Timesteps-{env_name}": total_num_steps_progess[env_name],
+                       f"Progress/Training/TotalLoss-{env_name}": total_loss
+                    })
             
             
         # # eval during phase or not
-        # if (args.eval_interval is not None and len(episode_rewards) > 1 and steps % args.eval_interval == 0):
+        # if (args.eval_interval is not None and steps % args.eval_interval == 0):
         #     obs_rms = utils.get_vec_normalize(envs).obs_rms
         #     # evaluate(actor_critic, obs_rms, args.env_name, args.seed,
         #     #          args.num_processes, eval_log_dir, device)
-
 
 def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env_name, eval_log_dir, vis, agn=False):
     global total_num_steps_compress
@@ -138,6 +153,8 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=100)
+    episode_rewards.append(0) # for initial logging
+    ewc_loss_all = []
 
     start = time.time()
     if agn:
@@ -166,7 +183,7 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob = big_policy.act(rollouts.obs[step])
+                value, action, action_log_prob, _ = big_policy.act(rollouts.obs[step])
                 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
@@ -192,7 +209,6 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
 
         # gradient update
         total_loss, kl_loss, ewc_loss = kb_agent.update(rollouts, ewc)
-        print(f"Total loss: {total_loss}, KL loss: {kl_loss}, EWC loss: {ewc_loss}")
         rollouts.after_update()
 
         # save for every interval-th episode or for the last epoch
@@ -211,15 +227,19 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
         # log metrics
         total_num_steps_compress.setdefault(env_name, 0)
         total_num_steps_compress[env_name] += args.num_processes * args.num_steps
-        if steps % args.log_interval == 0 and len(episode_rewards) > 1:
+        ewc_loss_all.append(ewc_loss)
+        if steps % args.log_interval == 0:
             end = time.time()
             print(
-                "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
+                "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, mean/median fisher {}/{}\n"
                 .format(steps, total_num_steps_compress[env_name],
                         int(total_num_steps_compress[env_name] / (end - start)),
                         len(episode_rewards), np.mean(episode_rewards),
                         np.median(episode_rewards), np.min(episode_rewards),
-                        np.max(episode_rewards)))
+                        np.max(episode_rewards),
+                        np.mean(ewc_loss_all), np.median(ewc_loss_all)
+                        )
+                )
             wandb.log({f"Compress/Training/Score-{env_name}": np.mean(episode_rewards),
                        f"Compress/Training/KL-Loss-{env_name}": np.mean(kl_loss),
                        f"Compress/Training/total-loss-{env_name}": np.mean(total_loss),
@@ -251,6 +271,7 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=100)
+    episode_rewards.append(0) # for initial logging
     episode_steps_list = deque(maxlen=100)
     episode_intrinsic_rewards = deque(maxlen=100)
 
@@ -276,7 +297,7 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob = big_policy.act(rollouts.obs[step])
+                value, action, action_log_prob, _ = big_policy.act(rollouts.obs[step])
 
             episode_steps += 1
 
@@ -284,11 +305,9 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
             new_obs, reward, done, infos = envs.step(action)
 
             # One-hot encode the action
-            # print(action)
             num_actions = 4
             action_oh = torch.zeros(action.shape[0], num_actions).to(device)  # Shape will be [8, 18]
             action_oh.scatter_(1, action, 1)  # One-hot encoding
-            # print(action_oh)
             pred_phi, phi = forward_model(rollouts.obs[step].clone(),  new_obs.clone(), action_oh) # forward model forward
 
             for info in infos:
@@ -304,16 +323,11 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
             # Calculate forward prediction error
             # fwd_loss = fwd_criterion(pred_phi, phi)
             fwd_loss = torch.norm(pred_phi - phi, dim=-1, p=2, keepdim=True)
-            # print(fwd_loss, fwd_loss.shape)
 
             # Calculate intrinsic reward
             intrinsic_reward = torch.log(fwd_loss+1).detach().cpu()
+            intrinsic_reward *= 2
             reward = intrinsic_reward
-            # print(intrinsic_reward.shape)
-            # intrinsic_reward = 0.2 * fwd_loss.detach().to("cpu")
-            # intrinsic_reward = ((pred_phi-phi).pow(2)).mean(dim=1).detach().view(-1, 1).cpu()
-            # print(intrinsic_reward.sum(dim=0))
-            # print(reward, reward.shape)
 
             # Append the current step to the steps list
             steps_list.append(episode_intrinsic_rewards)
@@ -328,13 +342,14 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.gae_lambda, args.use_proper_time_limits)
 
         # gradient update
-        value_loss, action_loss, dist_entropy = active_agent.update(rollouts, fwd_losses=fwd_losses)
+        toal_loss, value_loss, action_loss, dist_entropy = active_agent.update(rollouts, fwd_losses=fwd_losses)
         rollouts.after_update()
         
         # log metrics
         total_num_steps_agnostic.setdefault(env_name, 0)
         total_num_steps_agnostic[env_name] += args.num_processes * args.num_steps
-        if steps % args.log_interval == 0 and len(episode_rewards) > 1:
+
+        if steps % args.log_interval == 0:
             end = time.time()
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, mean intr.reward {:.8f}\n"
@@ -343,10 +358,107 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
                         len(episode_rewards), np.mean(episode_rewards),
                         np.median(episode_rewards), np.min(episode_rewards),
                         np.max(episode_rewards), np.mean(episode_intrinsic_rewards)))
+
             wandb.log({f"Agnostic/Training/Score-{env_name}": np.mean(episode_rewards),
                        f"Agnostic/Training/value_loss-{env_name}": value_loss,
                        f"Agnostic/Training/action_loss-{env_name}": action_loss,
                        f"Agnostic/Training/dist_entropy-{env_name}": dist_entropy,
                        f"Agnostic/Training/Timesteps-{env_name}": total_num_steps_agnostic[env_name],
                        f"Agnostic/Training/IntrinsicReward-{env_name}": np.mean(episode_intrinsic_rewards),
-                       f"Agnostic/Training/EpisodeSteps_per_episode-{env_name}": np.mean(episode_steps_list)})
+                       f"Agnostic/Training/EpisodeSteps_per_episode-{env_name}": np.mean(episode_steps_list),
+                       f"Agnostic/Training/TotalLoss-{env_name}": toal_loss})
+
+def progress_progressive(policy, a2c_agent, args, envs, device, env_name, vis, task_id):
+    """The progress phase, where the active learning is perfomed using the progressive neural network.
+
+    Args:
+        policy (nn.module): the policy network, i.e. attached with the progressive neural network
+        a2c_agent (_type_): the algorithm to update the policy network
+        args: args.
+        envs (gym envrionment): the environment
+        device (str): the device to run the computation.
+        env_name (str): the name of the environment
+        vis (int): the visit number wth respect to the environment
+    """
+
+    global total_num_steps_progess
+    rollouts = RolloutStorage(args.num_steps, args.num_processes, envs.observation_space.shape, envs.action_space)
+    obs = envs.reset()
+    rollouts.obs[0].copy_(obs)
+    rollouts.to(device)
+
+    episode_rewards = deque(maxlen=100)
+    episode_rewards.append(0) # for initial logging
+
+    start = time.time()
+    num_updates = int(args.num_env_steps_progress) // args.num_steps // args.num_processes
+
+    for steps in range(num_updates):
+            
+        # nmb of steps (rollouts) before update (i.e. batch size)
+        for step in range(args.num_steps):
+            
+            # Sample actions
+            with torch.no_grad():
+                value, action, action_log_prob, _ = policy.act(rollouts.obs[step], idx=task_id)
+
+            # Obser reward and next obs
+            obs, reward, done, infos = envs.step(action)
+            
+            for info in infos:
+                if 'episode' in info.keys():
+                    episode_rewards.append(info['episode']['r'])
+
+            # If done then clean the history of observations.
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+            bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in info.keys() else [1.0] for info in infos])
+            rollouts.insert(obs, action, action_log_prob, value, reward, masks, bad_masks)
+        
+
+        with torch.no_grad():
+            next_value = policy.get_value(rollouts.obs[-1], idx=task_id).detach()
+
+        rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.gae_lambda, args.use_proper_time_limits)
+
+        # loss and gradient update
+        total_loss, value_loss, action_loss, dist_entropy = a2c_agent.update(rollouts, task_id=task_id)
+        
+        rollouts.after_update()
+
+        # save for every interval-th episode or for the last epoch
+        if (steps % args.save_interval == 0 or steps == num_updates - 1) and args.save_dir != "":
+            save_path = os.path.join(args.save_dir, args.algo)
+            try:
+                os.makedirs(save_path)
+            except OSError:
+                pass
+
+            torch.save([
+                policy.state_dict(),
+                getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
+            ], os.path.join(save_path, env_name + f"-{steps}" + f"-progressive_net-visit{vis}" + ".pt"))
+        
+        # log metrics
+        total_num_steps_progess.setdefault(env_name, 0)
+        total_num_steps_progess[env_name] += args.num_processes * args.num_steps
+        if steps % args.log_interval == 0:
+            end = time.time()
+            print(
+                "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
+                .format(steps, total_num_steps_progess[env_name],
+                        int(total_num_steps_progess[env_name] / (end - start)),
+                        len(episode_rewards), 
+                        np.mean(episode_rewards),
+                        np.median(episode_rewards), 
+                        np.min(episode_rewards),
+                        np.max(episode_rewards), 
+                        dist_entropy,
+                        value_loss,
+                        action_loss))
+            wandb.log({f"Progressive_net/Training/Score-{env_name}": np.mean(episode_rewards),
+                       f"Progressive_net/Training/value_loss-{env_name}": value_loss,
+                       f"Progressive_net/Training/action_loss-{env_name}": action_loss,
+                       f"Progressive_net/Training/dist_entropy-{env_name}": dist_entropy,
+                       f"Progressive_net/Training/Timesteps-{env_name}": total_num_steps_progess[env_name],
+                       f"Progressive_net/Training/TotalLoss-{env_name}": total_loss
+                    })

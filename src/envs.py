@@ -17,8 +17,6 @@ from stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
 
-UNIFIED_ACTIONS = ['NOOP', 'FIRE', 'RIGHT', 'LEFT']
-
 class NormalizeObservations(gym.ObservationWrapper):
     def __init__(self, env):
         super(NormalizeObservations, self).__init__(env)
@@ -26,6 +24,32 @@ class NormalizeObservations(gym.ObservationWrapper):
     def observation(self, observation):
         return observation / 255.0
     
+def environment_mapping_action_all(env):
+    # Create a one-to-one mapping from 0 to 17 for all possible actions
+    action_map = {
+        0: 0,    # NOOP
+        1: 1,    # FIRE
+        2: 2,    # UP
+        3: 3,    # RIGHT
+        4: 4,    # LEFT
+        5: 5,    # DOWN
+        6: 6,    # UPRIGHT
+        7: 7,    # UPLEFT
+        8: 8,    # DOWNRIGHT
+        9: 9,    # DOWNLEFT
+        10: 10,  # UPFIRE
+        11: 11,  # RIGHTFIRE
+        12: 12,  # LEFTFIRE
+        13: 13,  # DOWNFIRE
+        14: 14,  # UPRIGHTFIRE
+        15: 15,  # UPLEFTFIRE
+        16: 16,  # DOWNRIGHTFIRE
+        17: 17,  # DOWNLEFTFIRE
+    }
+
+    # Apply the action map to the environment using the UnifiedActionWrapper
+    env = UnifiedActionWrapper(env, action_map=action_map)
+    return env
 
 def environment_mapping_action(env):
     
@@ -54,7 +78,15 @@ def environment_mapping_action(env):
             3: 3   # LEFT
         }
     if "DemonAttack" in env.spec.id:
-        # Adjusted action maps for "SpaceInvaders"
+        # Adjusted action maps for "DemonAttack"
+        action_map = {
+            0: 0,  # NOOP
+            1: 1,  # FIRE
+            2: 2,  # RIGHT
+            3: 3   # LEFT
+        }
+    if "AirRaid" in env.spec.id:
+        # Adjusted action maps for "AirRaidNoFrameskip"
         action_map = {
             0: 0,  # NOOP
             1: 1,  # FIRE
@@ -62,15 +94,21 @@ def environment_mapping_action(env):
             3: 3   # LEFT
         }
 
-    env = UnifiedActionWrapper(env, action_map=action_map)
+    unified_actions = ['NOOP', 'FIRE', 'RIGHT', 'LEFT']
+    env = UnifiedActionWrapper(env, action_map=action_map, UNIFIED_ACTIONS=unified_actions)
     return env
 
 class UnifiedActionWrapper(gym.Wrapper):
 
-    def __init__(self, env, action_map):
+    def __init__(self, env, action_map, **kwargs):
         super(UnifiedActionWrapper, self).__init__(env)
         self.action_map = action_map
-        self.action_space = gym.spaces.Discrete(len(UNIFIED_ACTIONS))
+
+        # Get the UNIFIED_ACTIONS from kwargs, if provided
+        unified_actions = kwargs.get('UNIFIED_ACTIONS')
+        
+        # Set the action space based on UNIFIED_ACTIONS or default to 18 actions
+        self.action_space = gym.spaces.Discrete(len(unified_actions) if unified_actions is not None else 18)
 
     def step(self, action):
         return self.env.step(self.action_map[np.array(action).item()])
@@ -121,6 +159,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
         env = WarpFrame(env, width=84, height=84)
         env = ClipRewardEnv(env)
         env = environment_mapping_action(env)
+        # env = environment_mapping_action_all(env)
         env = ScaledFloatFrame(env)
 
 

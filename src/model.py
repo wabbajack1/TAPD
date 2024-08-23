@@ -23,8 +23,8 @@ class BigPolicy(nn.Module):
     """
     def __init__(self, policy_a, policy_b, adaptor, use_lateral_connection=False):
         super(BigPolicy, self).__init__()
-        self.policy_a = deepcopy(policy_a) # kb column
-        self.policy_b = policy_b # active column
+        self.policy_a = deepcopy(policy_a) # Deep copy to ensure no shared state. KB column.
+        self.policy_b = policy_b # Use policy_b as-is. active column.
         self.adaptor = adaptor
         self.use_lateral_connection = use_lateral_connection
         self.experience = 0
@@ -69,10 +69,8 @@ class BigPolicy(nn.Module):
             action = dist.sample()
 
         action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
 
-        # print(f"Input shape {inputs.shape}, output shape {action_log_probs.shape, value.shape, action.shape}")
-        return value, action, action_log_probs
+        return value, action, action_log_probs, dist.logits
 
     def get_value(self, inputs):
         value, _ = self.forward(inputs)
@@ -83,9 +81,14 @@ class BigPolicy(nn.Module):
         dist = self.policy_b.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
+
+        # Optional sanity check for large negative values
+        if torch.any(action_log_probs < -1e6):  # Adjust the threshold as needed
+            print("Warning: Large negative log-probabilities detected!")
+
         dist_entropy = dist.entropy().mean()
 
-        return value, action_log_probs, dist_entropy
+        return value, action_log_probs, dist_entropy, dist.logits
 
 class Policy(nn.Module):
     def __init__(self, obs_shape, action_space, base=None, base_kwargs=None):
@@ -139,10 +142,8 @@ class Policy(nn.Module):
             action = dist.sample()
 
         action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
 
-        # print(f"Input shape {inputs.shape}, output shape {action_log_probs.shape, value.shape, action.shape}")
-        return value, action, action_log_probs
+        return value, action, action_log_probs, dist.logits
 
     def get_value(self, inputs):
         _, _, value, _ = self.base(inputs)
@@ -151,11 +152,11 @@ class Policy(nn.Module):
     def evaluate_actions(self, inputs, action):
         _, _, value, actor_features = self.base(inputs)
         dist = self.dist(actor_features)
-
         action_log_probs = dist.log_probs(action)
+
         dist_entropy = dist.entropy().mean()
 
-        return value, action_log_probs, dist_entropy
+        return value, action_log_probs, dist_entropy, dist.logits
     
     def reset_weights(self):
         print("\nRESETTING WEIGHTS")
@@ -248,8 +249,6 @@ class NNBase(nn.Module):
 
         return x, hxs
 
-
-
 class CNNBase(NNBase):
     def __init__(self, num_inputs, hidden_size=256):
         super(CNNBase, self).__init__(hidden_size, hidden_size)
@@ -285,12 +284,12 @@ class MLPBase(NNBase):
                                constant_(x, 0), np.sqrt(2))
 
         self.actor = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+            init_(nn.Linear(num_inputs, hidden_size)), nn.ReLU(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
 
         self.critic = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+            init_(nn.Linear(num_inputs, hidden_size)), nn.ReLU(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
 
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
@@ -360,7 +359,7 @@ class IntrinsicCuriosityModule(nn.Module):
         num_inputs = obs_shape[0]
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain("relu"))
+                               constant_(x, 0), nn.init.calculate_gain("leaky_relu"))
         
         # self.conv = nn.Sequential(
         #     nn.Conv2d(num_inputs, 32, 8, stride=4), nn.ELU(),
@@ -369,24 +368,24 @@ class IntrinsicCuriosityModule(nn.Module):
         # )
 
         self.conv = nn.Sequential(nn.Conv2d(num_inputs, 32, 3, stride=2, padding=1),
-                                  nn.ReLU(),
+                                  nn.LeakyReLU(),
                                   nn.Conv2d(32, 32, 3, stride=2, padding=1),
-                                  nn.ReLU(),
+                                  nn.LeakyReLU(),
                                   nn.Conv2d(32, 32, 3, stride=2, padding=1),
-                                  nn.ReLU(),
+                                  nn.LeakyReLU(),
                                   nn.Conv2d(32, 32, 3, stride=2, padding=1),
-                                  nn.ReLU(),
+                                  nn.LeakyReLU(),
                                   nn.Conv2d(32, 32, 3, stride=2, padding=1),
-                                  nn.ReLU()
+                                  nn.LeakyReLU()
         )
 
         
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain("relu"))
+                               constant_(x, 0), nn.init.calculate_gain("leaky_relu"))
         
         self.forward_net = nn.Sequential(
             nn.Linear(self.feature_size + num_actions, 256),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(256, self.feature_size)
         )
 
@@ -395,6 +394,4 @@ class IntrinsicCuriosityModule(nn.Module):
         next_state_ft = self.conv(next_state)
         state_ft = state_ft.view(-1, self.feature_size)
         next_state_ft = next_state_ft.view(-1, self.feature_size)
-        # print(state_ft.shape,next_state_ft.shape)
-        # print(torch.cat((state_ft, action), 1).shape)
         return self.forward_net(torch.cat((state_ft, action), 1)), next_state_ft

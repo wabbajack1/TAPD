@@ -6,7 +6,7 @@ import torch
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument(
-        '--algo', default='a2c', help='algorithm to use: a2c')
+        '--algo', default='progress-compress', help='algorithm to use: progress-compress | ewc-online | progressive-nets | agnostic (make the agnostic-phase flag True)')
     parser.add_argument(
         '--lr', type=float, default=7e-4, help='learning rate (default: 7e-4)')
     parser.add_argument(
@@ -114,10 +114,10 @@ def get_args():
         default='./trained_models/',
         help='directory to save agent logs (default: ./trained_models/)')
     parser.add_argument(
-        '--mps',
-        action='store_true',
-        default=False,
-        help='enable mps training')
+        '--device',
+        type=str,
+        default="cpu",
+        help='enable mps | cuda training')
     parser.add_argument(
         '--use-proper-time-limits',
         action='store_true',
@@ -139,7 +139,7 @@ def get_args():
         default=32,
         help='How many batches to calculate the fisher information')
     parser.add_argument(
-        '--steps-calucate-fisher',
+        '--steps-calculate-fisher',
         type=int,
         default=100,
         help="How many times batches are sampled from the environment during computation of the Fisher importance")
@@ -182,7 +182,8 @@ def get_args():
     
     args = parser.parse_args()
 
-    args.mps = args.mps and torch.backends.mps.is_available() # here mps backend
+    # Set device between cuda and mps
+    assert args.device in ["cuda", "mps", "cpu"]
 
     # Load YAML config if provided
     if args.config:

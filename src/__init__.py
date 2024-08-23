@@ -1,1 +1,1 @@
-from .progress_compress_agnostic import progress, compress, agnostic, utils
+from .progress_compress_agnostic import progress, compress, agnostic, utils, progress_progressive
