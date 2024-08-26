@@ -86,26 +86,52 @@ def main():
     #### init policies ####
     print("action shape", envs.action_space)
 
-    actor_critic_active = Policy(
+    # load model option
+    if args.model_path_active is not None:
+        actor_critic_active = Policy(
             envs.observation_space.shape,
             envs.action_space)
-    actor_critic_active.to(device)
+        actor_critic_active.to(device)
+        
+        # Load the model state from the path
+        logging.info(f"Loading kb column state from the path: {args.model_path_kb}")
+        checkpoint = torch.load(args.model_path_kb, map_location=device) # load the model state from the path, i.e. the index 0 is the model state
+        actor_critic_active.load_state_dict(checkpoint[0])
+    else:
+        actor_critic_active = Policy(
+            envs.observation_space.shape,
+            envs.action_space)
+        actor_critic_active.to(device)
 
-    actor_critic_kb = Policy(
-        envs.observation_space.shape,
-        envs.action_space)
-    actor_critic_kb.to(device)
+    if args.model_path_kb is not None:
+        actor_critic_kb = Policy(
+            envs.observation_space.shape,
+            envs.action_space)
+        actor_critic_kb.to(device)
+        
+        # Load the model state from the path
+        logging.info(f"Loading kb column state from the path: {args.model_path_kb}")
+        checkpoint = torch.load(args.model_path_kb, map_location=device) # load the model state from the path, i.e. the index 0 is the model state
+        actor_critic_kb.load_state_dict(checkpoint[0])
+    else:
+        actor_critic_kb = Policy(
+            envs.observation_space.shape,
+            envs.action_space)
+        actor_critic_kb.to(device)
     
     adaptor = Adaptor()
     adaptor.to(device)
 
     if args.algo.split("/")[0] == "progress-compress" or args.algo.split("/")[0] == "ewc-online":
+
         big_policy = BigPolicy(actor_critic_kb, actor_critic_active, adaptor)
         forward_model = IntrinsicCuriosityModule(envs.observation_space.shape, envs.action_space.n)
         forward_model.to(device)
         
         agnostic_flag = args.agnostic_phase
         samples_nmb = args.agn_samples # generate x samples from the distribution (visiting rooms)
+        
+        if args.model_path_kb is not None: big_policy.experience = 1
 
     elif args.algo.split("/")[0] == "progressive-nets":
         column_generator = Column_generator_CNN(num_of_conv_layers=2, kernel_size=8, num_of_classes=1, num_dens_Layer=1)

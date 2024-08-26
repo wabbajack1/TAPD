@@ -250,7 +250,7 @@ class NNBase(nn.Module):
         return x, hxs
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, hidden_size=256):
+    def __init__(self, num_inputs, hidden_size=512):
         super(CNNBase, self).__init__(hidden_size, hidden_size)
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
@@ -320,7 +320,7 @@ class SingleLayerMLP(nn.Module):
         return x
     
 class Adaptor(nn.Module):
-    def __init__(self, hidden_size=256):
+    def __init__(self, hidden_size=512):
         super(Adaptor, self).__init__()
         
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
@@ -384,9 +384,9 @@ class IntrinsicCuriosityModule(nn.Module):
                                constant_(x, 0), nn.init.calculate_gain("leaky_relu"))
         
         self.forward_net = nn.Sequential(
-            nn.Linear(self.feature_size + num_actions, 256),
+            nn.Linear(self.feature_size + num_actions, 512),
             nn.LeakyReLU(),
-            nn.Linear(256, self.feature_size)
+            nn.Linear(512, self.feature_size)
         )
 
     def forward(self, state, next_state, action):

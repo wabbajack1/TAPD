@@ -175,6 +175,17 @@ def get_args():
         type=int,
         default=5,
         help="Number of samples in agnostic phase")
+    parser.add_argument(
+        "--model_path_active",
+        type=str,
+        default=None,
+        help="Path to model for active learning")
+    
+    parser.add_argument(
+        "--model_path_kb",
+        type=str,
+        default=None,
+        help="Path to model for kb learning")
     
     parser.add_argument(
         '--config', type=str, help="Path to configuration YAML file", default=None
