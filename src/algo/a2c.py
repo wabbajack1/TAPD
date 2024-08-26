@@ -242,6 +242,7 @@ class EWConline(object):
         self.ewc_timestep_counter = 0
         self.ewc_start_timestep = ewc_start_timestep_after
         self.ewc_gamma = ewc_gamma
+        self.ewc_gamma_agnostic = 0.1
         self.ewc_lambda = ewc_lambda
         self.entropy_coef = entropy_coef
         self.old_fisher = None
@@ -289,10 +290,17 @@ class EWConline(object):
             for name, param in self.model.named_parameters():
                 if param.grad is not None and "critic" not in name:
                     if self.old_fisher is not None and name in self.old_fisher:
-                        self.fisher[name] = self.ewc_gamma * self.old_fisher[name] + self.fisher[name]
-                        # print(f"{name} - decay", "->", f"min {self.fisher[name].min()}, median {self.fisher[name].median()}, max {self.fisher[name].max()}")
-                        # print("---")
-                        # print(f"{name} - decay", "->", f"min {self.old_fisher[name].min()}, median {self.old_fisher[name].median()}, max {self.old_fisher[name].max()}")
+                        if self.env_name == "agnostic":
+                            print("agnostic", self.ewc_gamma_agnostic)
+                            self.fisher[name] = self.ewc_gamma_agnostic * self.old_fisher[name] + self.fisher[name]
+                        else:
+                            print("Not agnostic", self.ewc_gamma)
+                            self.fisher[name] = self.ewc_gamma * self.old_fisher[name] + self.fisher[name]
+                    
+                    print("-- New fisher --")
+                    print(f"{name} - decay", "->", f"min {self.fisher[name].min()}, median {self.fisher[name].median()}, max {self.fisher[name].max()}")
+                    print("-- Old fisher --")
+                    print(f"{name} - decay", "->", f"min {self.old_fisher[name].min()}, median {self.old_fisher[name].median()}, max {self.old_fisher[name].max()}")
         
         self.model.train()
         return deepcopy(self.fisher)

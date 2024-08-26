@@ -41,3 +41,6 @@ plot
 old
 __pycache__/
 R_pv.md
+fig
+cache
+.DS_Store

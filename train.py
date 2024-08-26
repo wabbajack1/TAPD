@@ -185,6 +185,13 @@ def progressive_nets(args, big_policy, active_agent, envs, device, test_environe
             # add next columns for subsequent tasks
             if vis == 0 and task_id < len(environements) - 1:
                 idx = big_policy.addColumn(device=device) # add a column to the network for each task
+                active_agent.optimizer.add_param_group({'params': big_policy.getColumn(idx).parameters()}) # add the new column to the optimizer
+                logging.info("Optimizer param groups:")
+                for param_group in active_agent.optimizer.param_groups:
+                    for param in param_group['params']:
+                        for name, param_in_model in big_policy.named_parameters():
+                            if param_in_model is param:
+                                print(f"Optimizing parameter: {name}")
                 logging.info(f"===== New column generated: {idx} =====")
 
 def ewc_online(args, big_policy, active_agent, actor_critic_active, actor_critic_kb, envs, device, ewc, test_environements, eval_log_dir, environements):
@@ -278,9 +285,7 @@ def progress_and_compress(actor_critic_active, actor_critic_kb, big_policy, adap
         for env_name in environements:
 
             # reset weights
-            actor_critic_active.reset_weights()
-            adaptor.reset_weights()
-
+            big_policy.policy_b.reset_weights()
 
             logging.info(f"{20 * '#'} Visit {vis + 1} of {env_name} {20 * '#'}")
             # init environment

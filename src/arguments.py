@@ -150,7 +150,7 @@ def get_args():
         help='When to start the calucation of fisher estimation')
     parser.add_argument(
         '--ewc-gamma',
-        type=int,
+        type=float,
         default=0.3,
         help='decay factor (i.e. 1 does not forget old task)')
     parser.add_argument(

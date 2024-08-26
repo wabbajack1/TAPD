@@ -64,7 +64,7 @@ class ProgColumn(nn.Module):
     def forward(self, input):
         outputs = []
         x = input
-        # print(f"======= column {self.colID}, input shape {x.shape} =======")
+        print(f"======= column {self.colID}, input shape {x.shape} =======")
         for row, block in enumerate(self.blocks):
             currOutput = block.runBlock(x)
             if row == 0 or len(self.parentCols) < 1:
@@ -144,6 +144,7 @@ class ProgNet(nn.Module):
         return col
 
     def forward(self, id, x):
+
         colToOutput = self.colMap[id]
         for i, col in enumerate(self.columns):
             y_last, y_second_last = col(x)
@@ -159,6 +160,7 @@ class ProgNet(nn.Module):
         else:
             action = dist.sample()
 
+        # print(action, dist.probs, dist.probs.shape)
         action_log_probs = dist.log_probs(action)
 
         return value, action, action_log_probs, dist.logits

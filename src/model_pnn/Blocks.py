@@ -7,6 +7,8 @@
 
 from .ProgNet import *
 import torch.nn as nn
+from src.utils import init
+import numpy as np
 
 """
 A ProgBlock containing a single fully connected layer (nn.Linear).
@@ -15,10 +17,14 @@ Activation function can be customized but defaults to nn.ReLU.
 class ProgDenseBlock(ProgBlock):
     def __init__(self, inSize, outSize, numLaterals, drop_out = 0, activation = nn.ReLU()):
         super().__init__()
+
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), np.sqrt(2))
+
         self.numLaterals = numLaterals
         self.inSize = inSize
         self.outSize = outSize
-        self.module = nn.Linear(inSize, outSize)
+        self.module = init_(nn.Linear(inSize, outSize))
         self.dropOut = nn.Dropout(drop_out)
         self.laterals = nn.ModuleList([nn.Linear(inSize, outSize) for _ in range(numLaterals)])
         self.dropOut_laterals = nn.Dropout(drop_out)
@@ -97,6 +103,10 @@ Stride, padding, dilation, groups, bias, and padding_mode can be set with layerA
 class ProgConv2DBNBlock(ProgBlock):
     def __init__(self, inSize, outSize, kernelSize, numLaterals,flatten = False, activation = nn.ReLU(), layerArgs = dict(), bnArgs = dict(), skipConn = False, lambdaSkip = I_FUNCTION):
         super().__init__()
+
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain("relu"))
+
         self.numLaterals = numLaterals
         self.inSize = inSize
         self.outSize = outSize
@@ -105,7 +115,8 @@ class ProgConv2DBNBlock(ProgBlock):
         self.skipFunction = lambdaSkip
         self.kernSize = kernelSize
         self.flatten = flatten
-        self.module = nn.Conv2d(inSize, outSize, kernelSize, **layerArgs)
+        self.module = init_(nn.Conv2d(inSize, outSize, kernelSize, **layerArgs))
+        
         self.moduleBN = nn.BatchNorm2d(outSize, **bnArgs)
         self.laterals = nn.ModuleList([nn.Conv2d(inSize, outSize, kernelSize, **layerArgs) for _ in range(numLaterals)])
         self.lateralBNs = nn.ModuleList([nn.BatchNorm2d(outSize, **bnArgs) for _ in range(numLaterals)])

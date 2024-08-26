@@ -19,8 +19,8 @@ pnn = ProgNet(column_generator)
 dataset = torch.randn(6400, channels, 84, 84)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=False)
 
-task_number = 10
-visit = 10
+task_number = 3
+visit = 3
 
 for vis in range(visit):
     print(f"===== Visit {vis} =====")
@@ -29,16 +29,24 @@ for vis in range(visit):
             idx = pnn.addColumn(device="cpu") # add a column to the network for each task
             print(f"===== New column generated: {idx} =====")
 
+
+
+
+        # unfreeze one column
+        pnn.unfreezeColumn(task)
+        
+        print("Task:", task)
+        for key in pnn.colMap.keys():
+            print(f"Before training: Column {key}: gradients_frozen={pnn.gradientUsageInfoColumn(key)}")
+
         for i, data in enumerate(dataloader):
             final_output, second_final_output = pnn.forward(idx, data)
             print(final_output.shape, second_final_output.shape)
             break
         
-        for key in pnn.colMap.keys():
-            print(f"Column {key}: gradients_frozen={pnn.gradientUsageInfoColumn(key)}")
-        
         pnn.freezeAllColumns()
-        # print(pnn.colMap)
-        # print(f"Columns: {pnn.columns}")
+        for key in pnn.colMap.keys():
+            print(f"After training: Column {key}: gradients_frozen={pnn.gradientUsageInfoColumn(key)}")
+        
 
 

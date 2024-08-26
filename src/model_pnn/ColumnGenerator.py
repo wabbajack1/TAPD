@@ -1,5 +1,6 @@
 from .Blocks import *
 from .ProgNet import ProgColumnGenerator
+from src.utils import init
 
 # we define a class that generates an LSTM based columns for us
 class Column_generator_LSTM(ProgColumnGenerator):
@@ -63,6 +64,10 @@ class Column_generator_CNN(ProgColumnGenerator):
         self.num_of_classes = num_of_classes
         self.num_dens_Layer = num_dens_Layer
         self.stride = stride
+
+        self.init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain("relu"))
+
     def __genID(self):
         id = self.ids
         self.ids += 1
@@ -93,7 +98,7 @@ class Column_generator_CNN(ProgColumnGenerator):
             columns.append(ProgDenseBlock(inSize=dense_input_size, outSize=256
                                           , numLaterals=0,drop_out = dropout))
             columns.append(ProgDenseBlock(inSize=256, outSize=self.num_of_classes
-                                          , activation=activation, numLaterals=0, drop_out = dropout))
+                                          ,activation=activation, numLaterals=0, drop_out = dropout))
 
         elif self.num_dens_Layer == 2:  # adding an extra dense layer between LSTM and output
             columns.append(ProgDenseBlock(inSize=dense_input_size, outSize=256
@@ -116,6 +121,13 @@ class Column_generator_CNN(ProgColumnGenerator):
         return ProgColumn(self.__genID(), columns, parentCols=[]).to(device)
 
     def generateColumn(self,device,parent_cols): #generates column with its parents connections
+
+        init_linear = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), np.sqrt(2))
+
+        init_conv = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain("relu"))
+        
         new_column = self.create_column(device = device)
         new_column.parentCols = parent_cols # setting connections to parent columns
         
@@ -123,9 +135,9 @@ class Column_generator_CNN(ProgColumnGenerator):
         for i in range(1,len(new_column.blocks)):
             for j in range(len(parent_cols)):
                 if new_column.blocks[i].blockType == "Dense":
-                    new_column.blocks[i].laterals.append(nn.Linear(new_column.blocks[i].inSize, new_column.blocks[i].outSize).to(device))
+                    new_column.blocks[i].laterals.append(init_linear(nn.Linear(new_column.blocks[i].inSize, new_column.blocks[i].outSize)).to(device))
                 else:
-                    new_column.blocks[i].laterals.append(nn.Conv2d(new_column.blocks[i].inSize, new_column.blocks[i].outSize, self.kernel_size//2, stride = self.stride//2).to(device))
+                    new_column.blocks[i].laterals.append(init_conv(nn.Conv2d(new_column.blocks[i].inSize, new_column.blocks[i].outSize, self.kernel_size//2, stride = self.stride//2)).to(device))
                     
                     # if we have the last conv2d block make it flatten
                     if i == len(new_column.blocks) - 1:
