@@ -206,6 +206,7 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
         # update counter #tdb (should it be applied on the global timestep or the current one?)
         if ewc is not None:
             ewc.ewc_timestep_counter += args.num_processes * args.num_steps
+            ewc.update_lambda(ewc.ewc_timestep_counter, args.num_env_steps_compress)  # Update lambda dynamically
 
         # gradient update
         total_loss, kl_loss, ewc_loss = kb_agent.update(rollouts, ewc)

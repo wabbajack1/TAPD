@@ -130,7 +130,7 @@ def main():
         
         agnostic_flag = args.agnostic_phase
         samples_nmb = args.agn_samples # generate x samples from the distribution (visiting rooms)
-        
+
         if args.model_path_kb is not None: big_policy.experience = 1
 
     elif args.algo.split("/")[0] == "progressive-nets":
@@ -259,7 +259,7 @@ def progress_and_compress(actor_critic_active, actor_critic_kb, big_policy, adap
             agnostic_flag = False # set the flag to false, because the agnostic phase is only activatet once
             
             # reset weights
-            actor_critic_active.reset_weights()
+            big_policy.policy_b.reset_weights()
             adaptor.reset_weights()
 
             for j in range(samples_nmb):
@@ -312,6 +312,7 @@ def progress_and_compress(actor_critic_active, actor_critic_kb, big_policy, adap
 
             # reset weights
             big_policy.policy_b.reset_weights()
+            adaptor.reset_weights()
 
             logging.info(f"{20 * '#'} Visit {vis + 1} of {env_name} {20 * '#'}")
             # init environment

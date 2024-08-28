@@ -242,6 +242,7 @@ class EWConline(object):
         self.ewc_timestep_counter = 0
         self.ewc_start_timestep = ewc_start_timestep_after
         self.ewc_gamma = ewc_gamma
+        self.initial_ewc_lambda = ewc_lambda  # Store the initial lambda value
         self.ewc_gamma_agnostic = 0.1
         self.ewc_lambda = ewc_lambda
         self.entropy_coef = entropy_coef
@@ -255,6 +256,13 @@ class EWConline(object):
         self.fisher = {}
         for n, p in deepcopy(self.params).items():
             self.fisher[n] = variable(p.detach().clone().zero_())
+
+    def update_lambda(self, current_timestep, total_timesteps):
+        # Dynamically adjust the lambda value based on the current timestep
+        # You can define different strategies, here, we'll linearly increase it
+        progress_ratio = current_timestep / total_timesteps
+        self.ewc_lambda = self.initial_ewc_lambda * progress_ratio
+        print(f"Updated lambda to {self.ewc_lambda:.4f} at timestep {current_timestep}")
     
     def calculate_fisher(self, rollouts):
         self.model.eval()
