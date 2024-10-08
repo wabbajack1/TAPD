@@ -116,4 +116,4 @@ if __name__ == "__main__":
     checkpoint = torch.load(args.model_path_kb, map_location=device) # load the model state from the path, i.e. the index 0 is the model state
     actor_critic_kb.load_state_dict(checkpoint[0])
 
-    evaluate(args, actor_critic_kb, "BeamRiderNoFrameskip-v4", args.seed, args.num_processes, args.log_dir, device, "kb")
+    evaluate(args, actor_critic_kb, "SpaceInvadersNoFrameskip-v4", args.seed, args.num_processes, args.log_dir, device, "kb")

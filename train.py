@@ -48,6 +48,13 @@ def main():
     global environements
     args = get_args()
 
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+
+    if torch.cuda.is_available() and args.cuda_deterministic:
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+
     wandb.init(
         # set the wandb project where this run will be logged
         project="Progress and Compress - Prediction",
@@ -76,8 +83,9 @@ def main():
     logging.info(f'Model runs on backend: {device}')
     
     # set up the environment
-    environements = ["PongNoFrameskip-v4", "SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
-    agnostic_environements = ["SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4"]
+    # environements = ["PongNoFrameskip-v4", "SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
+    environements = ["SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
+    # agnostic_environements = ["SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4"]
     test_environements = ["PongNoFrameskip-v4", "SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
 
     #### init first environment for architecture initialization ####
@@ -131,7 +139,11 @@ def main():
         agnostic_flag = args.agnostic_phase
         samples_nmb = args.agn_samples # generate x samples from the distribution (visiting rooms)
 
-        if args.model_path_kb is not None: big_policy.experience = 1
+        if args.model_path_kb is not None:
+            big_policy.experience = 1
+            big_policy.use_lateral_connection = True
+        print("The lateral connection is used during start=",big_policy.use_lateral_connection)
+
 
     elif args.algo.split("/")[0] == "progressive-nets":
         column_generator = Column_generator_CNN(num_of_conv_layers=2, kernel_size=8, num_of_classes=1, num_dens_Layer=1)
@@ -257,20 +269,23 @@ def progress_and_compress(actor_critic_active, actor_critic_kb, big_policy, adap
             print(5*"#", "Agnostic phase", 5*"#")
 
             agnostic_flag = False # set the flag to false, because the agnostic phase is only activatet once
-            
+
             # reset weights
             big_policy.policy_b.reset_weights()
-            adaptor.reset_weights()
-
+            big_policy.adaptor.reset_weights()
+            
             for j in range(samples_nmb):
 
                 sample = np.random.choice(agnostic_environements, 1) # sample name out of distribution
                 print(f"SampledEnv: {j}: {sample[0]}")
                 agn_environments = make_vec_envs(sample[0], args.seed, args.num_processes, args.gamma, args.log_dir, device, False) # create env
 
-                unfreeze_everything(big_policy) # unfreeze the big policy (here upate the active policy)
+                unfreeze_everything(big_policy.policy_b) # unfreeze the big policy (here upate the active policy)
+                unfreeze_everything(big_policy.adaptor) # unfreeze the big policy (here upate the active policy)
                 freeze_everything(big_policy.policy_a) # otherwise the policy_a would be updated in the progress phase
                 freeze_everything(actor_critic_kb)
+                # freeze_everything(actor_critic_kb)
+                # unfreeze_everything(big_policy)
                 agnostic(big_policy, active_agent, forward_model, args, agn_environments, device, sample[0], vis)
 
                 # compress phase
@@ -306,13 +321,13 @@ def progress_and_compress(actor_critic_active, actor_critic_kb, big_policy, adap
                 # use lateral connection after training min of one task, i.e. right after the above code
                 big_policy.use_lateral_connection = True
 
-
-        logging.info(f"{5 * '#'} PandC Framework {5 * '#'}")
+        print(f"Usage of lateral connections: {big_policy.use_lateral_connection}")
+        logging.info(f"{5 * '#'} PandC Framework {5 * '#'}")        
         for env_name in environements:
 
             # reset weights
             big_policy.policy_b.reset_weights()
-            adaptor.reset_weights()
+            big_policy.adaptor.reset_weights()
 
             logging.info(f"{20 * '#'} Visit {vis + 1} of {env_name} {20 * '#'}")
             # init environment
@@ -320,9 +335,12 @@ def progress_and_compress(actor_critic_active, actor_critic_kb, big_policy, adap
 
             # progress phase
             logging.info(f"{5 * '#'} Progress phase {5 * '#'}")
-            unfreeze_everything(big_policy) # unfreeze the big policy (here upate the active policy)
+            unfreeze_everything(big_policy.policy_b) # unfreeze the big policy (here upate the active policy)
+            unfreeze_everything(big_policy.adaptor) # unfreeze the big policy (here upate the active policy)
             freeze_everything(big_policy.policy_a) # otherwise the policy_a would be updated in the progress phase
             freeze_everything(actor_critic_kb)
+            # freeze_everything(actor_critic_kb)
+            # unfreeze_everything(big_policy)
             progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name, vis)
 
             # compress phase

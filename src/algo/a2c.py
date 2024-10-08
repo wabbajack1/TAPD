@@ -36,19 +36,18 @@ class A2C():
         self.max_grad_norm = max_grad_norm
         self.forward_model = forward_model
 
-        # self.optimizer = optim.RMSprop((list(actor_critic.parameters()) + list(big_policy.adaptor.parameters())), lr, eps=eps, alpha=alpha)
-        self.optimizer = optim.RMSprop(self.big_policy.parameters(), lr, eps=eps, alpha=alpha)
+        self.optimizer = optim.RMSprop((list(actor_critic.parameters()) + list(big_policy.adaptor.parameters())), lr, eps=eps, alpha=alpha)
+        # self.optimizer = optim.RMSprop(self.big_policy.parameters(), lr, eps=eps, alpha=alpha)
         print("Optimized parameters:")
         for name, param in self.big_policy.named_parameters():
             if param.requires_grad:
                 print(name)
 
-
         
         if forward_model is not None:
-            self.optimizer_forward = torch.optim.RAdam(self.forward_model.parameters(), lr=lr)
+            # self.optimizer_forward = torch.optim.RAdam(self.forward_model.parameters(), lr=lr)
             self.forward_model.train()
-            #self.optimizer_forward = optim.RMSprop(self.forward_model.parameters(), lr, eps=eps, alpha=alpha)
+            self.optimizer_forward = optim.RMSprop(self.forward_model.parameters(), lr, eps=eps, alpha=alpha)
 
     def update_ewc(self, rollouts, ewc=None):
         """Online fisher information.
@@ -251,6 +250,7 @@ class EWConline(object):
         self.max_grad_norm = max_grad_norm
         self.steps_calculate_fisher = steps_calculate_fisher
         self.exp = 0
+        self.fisher = {}
 
     def empty_fisher(self):
         self.fisher = {}
@@ -283,10 +283,9 @@ class EWConline(object):
 
         self.model.zero_grad()
         (action_loss - dist_entropy * self.entropy_coef).backward()
-        # nn.utils.clip_grad_norm_(self.model.parameters(),self.max_grad_norm)
+        # nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
 
         # calculate Fisher information matrixc
-        # y_t = a * y_t + (1-a)*y_{t-1}
         for name, param in self.model.named_parameters():
             if param.grad is not None and "critic" not in name:
                 self.fisher[name] += param.grad.data.clone().pow(2) / self.steps_calculate_fisher
@@ -298,9 +297,10 @@ class EWConline(object):
             for name, param in self.model.named_parameters():
                 if param.grad is not None and "critic" not in name:
                     if self.old_fisher is not None and name in self.old_fisher:
+                        # y_t = a * y_t + (1-a)*y_{t-1}
                         if self.env_name == "agnostic":
                             print("agnostic", self.ewc_gamma_agnostic)
-                            self.fisher[name] = self.ewc_gamma_agnostic * self.old_fisher[name] + self.fisher[name]
+                            self.fisher[name] = self.ewc_gamma_agnostic * self.old_fisher[name] + self.fisher[name] # fisher is the latest task importance
                         else:
                             print("Not agnostic", self.ewc_gamma)
                             self.fisher[name] = self.ewc_gamma * self.old_fisher[name] + self.fisher[name]
@@ -335,15 +335,8 @@ class EWConline(object):
         loss = 0
         for n, p in model.named_parameters():
             if "critic" not in n:
-                # print(n, "->", f"min {self.fisher[n].min()}, median {self.fisher[n].median()}, max {self.fisher[n].max()}")
-                # fisher = torch.sqrt(self.fisher[n] + 1e-08)
                 fisher = self.fisher[n]
                 loss += (fisher * (p - self.mean_params[n]).pow(2)).sum()
-                # fisher_sum += abs(self.fisher[n]).sum()
-                # mean_params_sum += self.mean_params[n].sum()
-        
-        # print(n, self.mean_params[n])
-        # print(self.ewc_lambda * loss)
         return self.ewc_lambda * loss
     
     @torch.no_grad()
@@ -355,15 +348,18 @@ class EWConline(object):
             agent: to get the new data (experience) of the latest run from the agents memory (current policy)
             new_task (_type_): _description_
         """
+        # update the model for the latest task
         self.model = model
         self.env_name = env_name
+
+        # get the parameters of the model
         self.params = {n: p for n, p in self.model.named_parameters() if p.requires_grad and "critic" not in n}
-        # print(list(self.params.keys())[-1], list(self.params.values())[-1])
-        self.empty_fisher()
+        self.empty_fisher() # empty the fisher matrix for the new task, later it will be in old_fisher
+        
+        # take the reference of the current parameters for later use in the penalty calculation
         for n, p in deepcopy(self.params).items():
             self.mean_params[n] = variable(p.data.detach().clone())
-        print(f"Calculation of the importance for the task of each parameter: {self.env_name}")
-
+        print(f"Exp {self.exp} - Calculation of the importance of the task for each parameter: {self.env_name}")
 
 def gather_fisher_samples(current_policy, ewc, args, envs, device):
     """_summary_

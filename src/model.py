@@ -39,11 +39,11 @@ class BigPolicy(nn.Module):
 
     def forward(self, inputs, action=None):
         # use policy_a to get the lateral connections
-        a1, a2, _, a3 = self.policy_a(inputs)
+        a1, a2, critic, a3 = self.policy_a(inputs) # x1, x2, self.critic_linear(x3), x3
 
         # use adaptor, after seeing one experience/task from inputs of the policy_b
         if self.use_lateral_connection:
-            x1, x2, x3 = self.adaptor(a1, a2, a3)
+            x1, x2, x3, critic_adaptor = self.adaptor(a1, a2, a3, critic)
             b1 = self.policy_b.base.main[:2](inputs)
             b1 = b1 + x1
 
@@ -51,8 +51,10 @@ class BigPolicy(nn.Module):
             b2 = b2 + x2
 
             b3 = self.policy_b.base.main[4:](b2)
-            b3 = b3 + x3
+            b3 = b3 + x3 # one layer before action and critic activations
+
             critic_b3 = self.policy_b.base.critic_linear(b3)
+            critic_b3 = critic_b3 + critic_adaptor
         else:
             _, _, critic_b3, b3 = self.policy_b(inputs)
 
@@ -336,15 +338,21 @@ class Adaptor(nn.Module):
             init_(nn.Linear(hidden_size, hidden_size)),
             nn.ReLU(),
         )
+        
+        self.single_layer_mlp_critic = nn.Sequential(
+            init_(nn.Linear(1, 1))
+        )
 
         self.train()
 
-    def forward(self, x1, x2, x3):
+    def forward(self, x1, x2, x3, critic):
         x1 = self.conv1_adaptor(x1)
         x2 = self.conv2_adaptor(x2)
         x3 = self.single_layer_mlp(x3)
 
-        return x1, x2, x3
+        critic = self.single_layer_mlp_critic(critic)
+
+        return x1, x2, x3, critic
     
     def reset_weights(self):
         print("\nRESETTING WEIGHTS")

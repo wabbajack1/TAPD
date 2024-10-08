@@ -50,7 +50,6 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
         ewc.ewc_start_timestep = args.ewc_start_timestep_after
 
     episode_rewards = deque(maxlen=100)
-    episode_rewards.append(0) # for initial logging
 
     start = time.time()
     num_updates = int(args.num_env_steps_progress) // args.num_steps // args.num_processes
@@ -114,7 +113,7 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
         # log metrics
         total_num_steps_progess.setdefault(env_name, 0)
         total_num_steps_progess[env_name] += args.num_processes * args.num_steps
-        if steps % args.log_interval == 0:
+        if steps % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
@@ -153,7 +152,7 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=100)
-    episode_rewards.append(0) # for initial logging
+     
     ewc_loss_all = []
 
     start = time.time()
@@ -176,8 +175,7 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
             utils.update_linear_schedule(
-                kb_agent.optimizer, steps, num_updates,
-                kb_agent.optimizer.lr if args.algo == "acktr" else args.lr)
+                kb_agent.optimizer, steps, num_updates, args.lr)
             
         # nmb of steps (rollouts) before update
         for step in range(args.num_steps):
@@ -206,7 +204,7 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
         # update counter #tdb (should it be applied on the global timestep or the current one?)
         if ewc is not None:
             ewc.ewc_timestep_counter += args.num_processes * args.num_steps
-            ewc.update_lambda(ewc.ewc_timestep_counter, args.num_env_steps_compress)  # Update lambda dynamically
+            # ewc.update_lambda(ewc.ewc_timestep_counter, args.num_env_steps_compress)  # Update lambda dynamically
 
         # gradient update
         total_loss, kl_loss, ewc_loss = kb_agent.update(rollouts, ewc)
@@ -220,16 +218,24 @@ def compress(big_policy, kb_agent, actor_critic_kb, ewc, args, envs, device, env
             except OSError:
                 pass
 
-            torch.save([
-                actor_critic_kb.state_dict(),
-                getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
-            ], os.path.join(save_path, env_name + f"-{steps}" + f"-kb-visit{vis}" + ".pt"))
+            if agn:
+                torch.save([
+                    actor_critic_kb.state_dict(),
+                    getattr(utils.get_vec_normalize(envs), 'obs_rms', None),
+                    None if type(ewc) == type(None) else ewc.fisher
+                ], os.path.join(save_path, env_name + f"-{steps}" + f"-kb-visit{vis}" + "-agnostic" + ".pt"))
+            else:
+                torch.save([
+                    actor_critic_kb.state_dict(),
+                    getattr(utils.get_vec_normalize(envs), 'obs_rms', None),
+                    None if type(ewc) == type(None) else ewc.fisher
+                ], os.path.join(save_path, env_name + f"-{steps}" + f"-kb-visit{vis}" + ".pt"))
 
         # log metrics
         total_num_steps_compress.setdefault(env_name, 0)
         total_num_steps_compress[env_name] += args.num_processes * args.num_steps
         ewc_loss_all.append(ewc_loss)
-        if steps % args.log_interval == 0:
+        if steps % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, mean/median fisher {}/{}\n"
@@ -272,7 +278,7 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=100)
-    episode_rewards.append(0) # for initial logging
+     
     episode_steps_list = deque(maxlen=100)
     episode_intrinsic_rewards = deque(maxlen=100)
 
@@ -287,11 +293,11 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
 
     for steps in range(num_updates):
 
-        if args.use_linear_lr_decay:
-            # decrease learning rate linearly
-            utils.update_linear_schedule(
-                active_agent.optimizer, steps, num_updates,
-          args.lr)
+        # if args.use_linear_lr_decay:
+        #     # decrease learning rate linearly
+        #     utils.update_linear_schedule(
+        #         active_agent.optimizer, steps, num_updates,
+        #   args.lr)
             
         # nmb of steps (rollouts) before update
         fwd_losses = []
@@ -327,7 +333,6 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
 
             # Calculate intrinsic reward
             intrinsic_reward = torch.log(fwd_loss+1).detach().cpu()
-            intrinsic_reward *= 2
             reward = intrinsic_reward
 
             # Append the current step to the steps list
@@ -350,7 +355,7 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
         total_num_steps_agnostic.setdefault(env_name, 0)
         total_num_steps_agnostic[env_name] += args.num_processes * args.num_steps
 
-        if steps % args.log_interval == 0:
+        if steps % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, mean intr.reward {:.8f}\n"
@@ -389,7 +394,7 @@ def progress_progressive(policy, a2c_agent, args, envs, device, env_name, vis, t
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=100)
-    episode_rewards.append(0) # for initial logging
+     
 
     start = time.time()
     num_updates = int(args.num_env_steps_progress) // args.num_steps // args.num_processes
@@ -442,7 +447,7 @@ def progress_progressive(policy, a2c_agent, args, envs, device, env_name, vis, t
         # log metrics
         total_num_steps_progess.setdefault(env_name, 0)
         total_num_steps_progess[env_name] += args.num_processes * args.num_steps
-        if steps % args.log_interval == 0:
+        if steps % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
