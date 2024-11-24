@@ -125,7 +125,7 @@ def get_args():
         help='compute returns taking into account time limits')
     parser.add_argument(
         '--use-linear-lr-decay',
-        action='store_true',
+        type=bool,
         default=False,
         help='use a linear schedule on the learning rate')
     parser.add_argument(

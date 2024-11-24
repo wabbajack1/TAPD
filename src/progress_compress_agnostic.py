@@ -25,6 +25,7 @@ from datetime import datetime
 total_num_steps_progess = {}
 total_num_steps_compress = {}
 total_num_steps_agnostic = {}
+total_scores = {}
 
 
 def progress(big_policy, active_agent, actor_critic_active, args, envs, device, env_name, vis, ewc=None):
@@ -113,6 +114,9 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
         # log metrics
         total_num_steps_progess.setdefault(env_name, 0)
         total_num_steps_progess[env_name] += args.num_processes * args.num_steps
+
+        total_num_steps_progess.setdefault(env_name, 0)
+        total_scores[env_name] = np.log(50 + np.mean(episode_rewards)) # 50 is the initial "score"
         if steps % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
             print(
@@ -132,7 +136,8 @@ def progress(big_policy, active_agent, actor_critic_active, args, envs, device, 
                        f"Progress/Training/action_loss-{env_name}": action_loss,
                        f"Progress/Training/dist_entropy-{env_name}": dist_entropy,
                        f"Progress/Training/Timesteps-{env_name}": total_num_steps_progess[env_name],
-                       f"Progress/Training/TotalLoss-{env_name}": total_loss
+                       f"Progress/Training/TotalLoss-{env_name}": total_loss,
+                       f"Progress/Training/Total_Score": sum(total_scores.values()) / len(total_scores),
                     })
             
             
@@ -293,11 +298,9 @@ def agnostic(big_policy, active_agent, forward_model, args, envs, device, env_na
 
     for steps in range(num_updates):
 
-        # if args.use_linear_lr_decay:
-        #     # decrease learning rate linearly
-        #     utils.update_linear_schedule(
-        #         active_agent.optimizer, steps, num_updates,
-        #   args.lr)
+        if args.use_linear_lr_decay:
+            # decrease learning rate linearly
+            utils.update_linear_schedule(active_agent.optimizer, steps, num_updates, args.lr)
             
         # nmb of steps (rollouts) before update
         fwd_losses = []

@@ -115,5 +115,13 @@ if __name__ == "__main__":
     logging.info(f"Loading kb column state from the path: {args.model_path_kb}")
     checkpoint = torch.load(args.model_path_kb, map_location=device) # load the model state from the path, i.e. the index 0 is the model state
     actor_critic_kb.load_state_dict(checkpoint[0])
+    print(checkpoint[2] is not None)
 
-    evaluate(args, actor_critic_kb, "SpaceInvadersNoFrameskip-v4", args.seed, args.num_processes, args.log_dir, device, "kb")
+    # mean and median of fisher (its a dictronary)
+    fisher = checkpoint[2]
+    for key in fisher.keys():
+        print("mean fisher", key, torch.mean(fisher[key]), "median fisher", key, torch.median(fisher[key]))
+        print("max fisher", key, torch.max(fisher[key]), "min fisher", key, torch.min(fisher[key]))
+
+    for env in agnostic_environements:
+        evaluate(args, actor_critic_kb, env, args.seed, args.num_processes, args.log_dir, device, "kb")

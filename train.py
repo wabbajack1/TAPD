@@ -3,6 +3,7 @@ import glob
 import os
 import time
 from collections import deque
+from copy import deepcopy
 
 import gym
 import numpy as np
@@ -26,7 +27,14 @@ from src.model_pnn.ColumnGenerator import Column_generator_CNN
 from src.model_pnn.ProgNet import ProgNet
 
 import multiprocessing, logging
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+import os
+
+# Get current working directory
+log_dir_log = os.path.expanduser("~/my_logs")
+os.makedirs(log_dir_log, exist_ok=True)  # Create the directory if it doesn't exist
+log_file_log = os.path.join(log_dir_log, 'application.log')
+
+logging.basicConfig(format='%(levelname)s:%(message)s', filename=log_file_log, level=logging.DEBUG)
 
 # logger = multiprocessing.log_to_stderr()
 # logger.setLevel(multiprocessing.SUBDEBUG)
@@ -61,6 +69,7 @@ def main():
         entity="agnostic",
         config=args,
         mode="online" if args.log_wandb else "disabled",
+        dir=log_dir_log,
     )
 
     # set seed and log dir
@@ -83,9 +92,9 @@ def main():
     logging.info(f'Model runs on backend: {device}')
     
     # set up the environment
-    # environements = ["PongNoFrameskip-v4", "SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
-    environements = ["SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
-    # agnostic_environements = ["SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4"]
+    environements = ["PongNoFrameskip-v4", "SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
+    # environements = ["SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
+    agnostic_environements = ["SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4"]
     test_environements = ["PongNoFrameskip-v4", "SpaceInvadersNoFrameskip-v4", "BeamRiderNoFrameskip-v4", "DemonAttackNoFrameskip-v4", "AirRaidNoFrameskip-v4"]
 
     #### init first environment for architecture initialization ####
@@ -102,8 +111,8 @@ def main():
         actor_critic_active.to(device)
         
         # Load the model state from the path
-        logging.info(f"Loading kb column state from the path: {args.model_path_kb}")
-        checkpoint = torch.load(args.model_path_kb, map_location=device) # load the model state from the path, i.e. the index 0 is the model state
+        logging.info(f"Loading kb column state from the path: {args.model_path_active}")
+        checkpoint = torch.load(args.model_path_active, map_location=device) # load the model state from the path, i.e. the index 0 is the model state
         actor_critic_active.load_state_dict(checkpoint[0])
     else:
         actor_critic_active = Policy(
@@ -182,6 +191,19 @@ def main():
                 max_grad_norm=args.max_grad_norm,
                 steps_calculate_fisher=args.steps_calculate_fisher)
 
+    # continue training from the current fisher matrix
+    if args.model_path_kb is not None:
+        checkpoint = torch.load(args.model_path_kb, map_location=device)
+        ewc.fisher = checkpoint[2] # load the fisher from the model path, for current task (i.e. the fisher in the first distalltion process before calulating the next fisher)
+        ewc.old_fisher = checkpoint[2] # here the fisher is also the old fisher, as in the next calulation this fisher is old.
+        ewc.exp = 1 # getfisher(...) increases ewc.exp, i.e. ewc.exp > 1 then decay
+
+        # load the mean parameters from the model path to the ewc object mean_params
+        params = {n: p for n, p in actor_critic_kb.named_parameters() if p.requires_grad and "critic" not in n}
+        for n, p in deepcopy(params).items():
+            ewc.mean_params[n] = p.data.detach().clone().to(device)
+
+        logging.info(f"Loading fisher matrix from the path: {True if ewc.fisher is not None and type(ewc.fisher) == dict else False}")
 
     if args.algo.split("/")[0] == "progress-compress":
         logging.info("Progress and Compress Framework Algorithm")
