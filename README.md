@@ -1,4 +1,4 @@
-# TAPD: Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation
+# Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation
 
 Pytorch implementation for reproducing the results from the paper "Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation" by Muhammad Burhan Hafez and Kerim Erekmen accepted for publication at *Scientific Reports*.
 
