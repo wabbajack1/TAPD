@@ -24,5 +24,16 @@ Here within the config folder, you can define various configuration files for di
 
 Additionally the implementation of the baseline might be the first in pytorch: https://arxiv.org/abs/1805.06370.
 
+## Citation
+If you find our work to be useful in your research, please consider citing our paper:
+```
+@article{hafez2024continual,
+  title={Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation},
+  author={Hafez, Muhammad Burhan and Erekmen, Kerim},
+  journal={arXiv preprint arXiv:2411.16532},
+  year={2024}
+}
+```
+
 ## Contact
 Muhammad Burhan Hafez - [burhan.hafez@soton.ac.uk](burhan.hafez@soton.ac.uk), Kerim Erekmen - [kerim.erekmen@informatik.uni-hamburg.de](kerim.erekmen@informatik.uni-hamburg.de)
