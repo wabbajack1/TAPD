@@ -1,6 +1,6 @@
 # Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation
 
-Pytorch implementation for reproducing the results from the paper "Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation" (https://arxiv.org/abs/2411.16532) by Muhammad Burhan Hafez and Kerim Erekmen accepted for publication at *Scientific Reports* (https://www.nature.com/articles/s41598-024-80774-8).
+Pytorch implementation for reproducing the results from the paper "Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation" (https://arxiv.org/abs/2411.16532) by Muhammad Burhan Hafez and Kerim Erekmen accepted for publication at *Scientific Reports* (https://www.nature.com/articles/s41598-024-80774-8). Our research might introduce the first task-independent knowledge distillation approach for continual reinforcement learning.
 
 Muhammad Burhan Hafez and Kerim Erekmen contributed equally to the development of the codebase and the experiments presented in this research.
 
