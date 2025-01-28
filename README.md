@@ -22,7 +22,7 @@ python train.py --config config/example_progress_and_compress.yml
 ```
 Here within the config folder, you can define various configuration files for different experiments.
 
-**Additionally the implementation of the baseline might be the first in pytorch: https://arxiv.org/abs/1805.06370.**
+**Additionally the implementation of the baseline might be the first in pytorch!: https://arxiv.org/abs/1805.06370.**
 
 ## Citation
 If you find our work to be useful in your research, please consider citing our paper:
