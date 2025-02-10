@@ -1,6 +1,6 @@
 # Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation
 
-Pytorch implementation for reproducing the results from the paper "Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation" (https://arxiv.org/abs/2411.16532) by Muhammad Burhan Hafez and Kerim Erekmen accepted for publication at *Scientific Reports* (https://www.nature.com/articles/s41598-024-80774-8). Our research might introduce the first task-independent knowledge distillation approach for continual reinforcement learning.
+Pytorch implementation for reproducing the results from the paper "Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation" (https://arxiv.org/abs/2411.16532) by Muhammad Burhan Hafez and Kerim Erekmen accepted for publication at *Scientific Reports* (https://www.nature.com/articles/s41598-024-80774-8). Our research introduces the first task-independent knowledge distillation approach for continual reinforcement learning.
 
 Muhammad Burhan Hafez and Kerim Erekmen contributed equally to the development of the codebase and the experiments presented in this research.
 
@@ -22,16 +22,20 @@ python train.py --config config/example_progress_and_compress.yml
 ```
 Here within the config folder, you can define various configuration files for different experiments.
 
-**Additionally the implementation of the baseline (Progress \& Compress) might be the first in pytorch!: https://arxiv.org/abs/1805.06370.**
+**Additionally the implementation of the baseline (Progress \& Compress) is the first in pytorch!: https://arxiv.org/abs/1805.06370.**
 
 ## Citation
 If you find our work to be useful in your research, please consider citing our paper:
 ```
 @article{hafez2024continual,
-  title={Continual Deep Reinforcement Learning with Task-Agnostic Policy Distillation},
+  title={Continual deep reinforcement learning with task-agnostic policy distillation},
   author={Hafez, Muhammad Burhan and Erekmen, Kerim},
-  journal={arXiv preprint arXiv:2411.16532},
-  year={2024}
+  journal={Scientific Reports},
+  volume={14},
+  number={1},
+  pages={31661},
+  year={2024},
+  publisher={Nature Publishing Group UK London}
 }
 ```
 
